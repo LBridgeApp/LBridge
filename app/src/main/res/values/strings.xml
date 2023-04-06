@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Libre Tools</string>
+    <string name="patch_librelink">Patch LibreLink with the last scan</string>
+    <string name="remove_librelink_database">Remove LibreLink database</string>
+</resources>
