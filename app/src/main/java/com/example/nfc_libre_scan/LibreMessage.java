@@ -11,12 +11,15 @@ public class LibreMessage {
     private final NfcV nfcVTag;
     private byte[] patchInfo;
 
-    public byte[] getPatchInfo(){
+    public byte[] getPatchInfo() {
         return this.patchInfo;
     }
+
     private byte[] payload;
 
-    public byte[] getPayload(){ return this.payload; }
+    public byte[] getPayload() {
+        return this.payload;
+    }
 
     LibreMessage(NfcV nfcVTag, Logger logger) {
         this.logger = logger;
@@ -31,11 +34,10 @@ public class LibreMessage {
         payload = queryPayload();
 
         boolean payloadIsCorrect = verifyPayload(payload);
-        if(payloadIsCorrect){
+        if (payloadIsCorrect) {
             logger.ok("Payload is correct.");
-        }
-        else {
-            logger.error("Payload is not correct.");
+        } else {
+            throw new Exception("Payload is not correct.");
         }
         String serialNumber = decodeSerialNumberKey(patchUID);
         logger.ok(String.format("Serial number: %s", serialNumber));
@@ -44,7 +46,7 @@ public class LibreMessage {
     }
 
     private byte[] queryPatchInfo() throws IOException, InterruptedException {
-        logger.ok("Getting patchInfo...");
+        logger.inf("Getting patchInfo...");
         // 0x02 - код команды Read Single Block, используемый для чтения одного блока данных с NFC-тега.
         // (byte) 0xa1 - код блока, который нужно прочитать.
         // 0x07 - номер блока, с которого нужно начать чтение.
@@ -64,10 +66,11 @@ public class LibreMessage {
                 response = nfcVTag.transceive(cmd);
                 continueOperation = false;
             } catch (TagLostException ignored) {
-                if(System.currentTimeMillis() > time + 2000){
+                if (System.currentTimeMillis() > time + 2000) {
                     throw new IOException("More than 2 seconds tag lost.");
+                } else {
+                    Thread.sleep(100);
                 }
-                else{ Thread.sleep(100); }
             }
         }
         while (continueOperation);
@@ -76,7 +79,7 @@ public class LibreMessage {
 
     private byte[] queryPayload() throws IOException, InterruptedException {
         byte[] data = new byte[1000];
-        logger.ok("Getting payload...");
+        logger.inf("Getting payload...");
         final int correct_reply_size = 9;
         final int startBlock = 1;
         for (int i = 0; i < 43; i++) {
@@ -85,7 +88,7 @@ public class LibreMessage {
             do {
                 oneBlock = runCmd(cmd);
             }
-            while(oneBlock.length != correct_reply_size);
+            while (oneBlock.length != correct_reply_size);
             System.arraycopy(oneBlock, startBlock, data, i * 8, 8);
         }
         logger.ok("Payload retrieved.");
@@ -97,12 +100,14 @@ public class LibreMessage {
         return nfcVTag.getTag().getId();
     }
 
-    private byte[] queryPatchUID(){ return queryUID(); }
+    private byte[] queryPatchUID() {
+        return queryUID();
+    }
 
     public String decodeSerialNumberKey(byte[] patchUID) {
-        byte[] serialBuffer = new byte[3+8];
-        System.arraycopy(patchUID,0, serialBuffer, 3, 8);
-        return decodeSerialNumber( serialBuffer);
+        byte[] serialBuffer = new byte[3 + 8];
+        System.arraycopy(patchUID, 0, serialBuffer, 3, 8);
+        return decodeSerialNumber(serialBuffer);
     }
 
     public String decodeSerialNumber(byte[] input) {
@@ -122,7 +127,7 @@ public class LibreMessage {
         uuidShort[7] = 0x00;
 
         StringBuilder binary = new StringBuilder();
-        String binS = "";
+        String binS;
         for (i = 0; i < 8; i++) {
             binS = String.format("%8s", Integer.toBinaryString(uuidShort[i] & 0xFF)).replace(' ', '0');
             binary.append(binS);
@@ -141,31 +146,31 @@ public class LibreMessage {
 
     public boolean verifyPayload(byte[] data) {
         // Continue for libre1,2 checks
-        if(data.length < LIBRE_1_2_FRAM_SIZE) {
+        if (data.length < LIBRE_1_2_FRAM_SIZE) {
             logger.error("Must have at least 344 bytes for libre data");
             return false;
         }
         // Проверка диапазона 0 - 343 байтов одной операцией не работает.
-        boolean checksum_ok = checkCRC16(data, 0 ,24); // 0th - 23th bytes
-        checksum_ok &= checkCRC16(data, 24 ,296); // 24th - 319th bytes
-        checksum_ok &= checkCRC16(data, 320 ,24); // 320th - 343th bytes
+        boolean checksum_ok = checkCRC16(data, 0, 24); // 0th - 23th bytes
+        checksum_ok &= checkCRC16(data, 24, 296); // 24th - 319th bytes
+        checksum_ok &= checkCRC16(data, 320, 24); // 320th - 343th bytes
         return checksum_ok;
 
     }
 
     boolean checkCRC16(byte[] data, int start, int size) {
         long crc = computeCRC16(data, start, size);
-        return crc == ((data[start+1] & 0xFF) * 256 + (data[start] & 0xff));
+        return crc == ((data[start + 1] & 0xFF) * 256 + (data[start] & 0xff));
     }
 
-    long computeCRC16(byte[] data, int start, int size){
+    long computeCRC16(byte[] data, int start, int size) {
         long crc = 0xffff;
         for (int i = start + 2; i < start + size; i++) {
-            crc = ((crc >> 8) ^ crc16table[(int)(crc ^ (data[i] & 0xFF) ) & 0xff]);
+            crc = ((crc >> 8) ^ crc16table[(int) (crc ^ (data[i] & 0xFF)) & 0xff]);
         }
 
         long reverseCrc = 0;
-        for (int i=0; i <16; i++) {
+        for (int i = 0; i < 16; i++) {
             reverseCrc = (reverseCrc << 1) | (crc & 1);
             crc >>= 1;
         }
@@ -203,5 +208,5 @@ public class LibreMessage {
             63111, 50204, 54677, 41258, 45219, 33336, 37809, 27462, 31439,
             18516, 23005, 11618, 15595, 3696, 8185, 63375, 58886, 54429,
             50452, 45483, 40994, 37561, 33584, 31687, 27214, 22741, 18780,
-            15843, 11370, 7921, 3960 };
+            15843, 11370, 7921, 3960};
 }

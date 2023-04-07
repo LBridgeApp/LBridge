@@ -6,16 +6,18 @@ import android.nfc.Tag;
 import android.nfc.tech.NfcV;
 import android.os.Bundle;
 
+import java.util.Objects;
+
 public class NfcScanner implements NfcAdapter.ReaderCallback {
     private final NfcAdapter nfcAdapter;
     private final Activity activity;
     private final Logger logger;
-    private final LibreLinkPatcher libreLinkPatcher;
+    private final LibreLink libreLink;
 
-    NfcScanner(Activity activity, LibreLinkPatcher libreLinkPatcher, Logger logger) {
+    NfcScanner(Activity activity, LibreLink libreLink, Logger logger) {
         this.nfcAdapter = NfcAdapter.getDefaultAdapter(activity);
         this.activity = activity;
-        this.libreLinkPatcher = libreLinkPatcher;
+        this.libreLink = libreLink;
         this.logger = logger;
     }
 
@@ -53,9 +55,9 @@ public class NfcScanner implements NfcAdapter.ReaderCallback {
             }
 
             libreMessage.handle();
-            libreLinkPatcher.onLibreMessageReceived(libreMessage);
+            libreLink.onLibreMessageReceived(libreMessage);
         } catch (Exception e) {
-            logger.error(e.getLocalizedMessage());
+            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
         } finally {
             logger.ok("NfcV tag closed");
         }

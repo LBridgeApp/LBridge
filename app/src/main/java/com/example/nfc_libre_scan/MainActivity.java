@@ -11,8 +11,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Logger logger = new Logger(this, findViewById(R.id.logTextView));
-        LibreLinkPatcher libreLinkPatcher = new LibreLinkPatcher(this, logger);
-        NfcScanner nfcScanner = new NfcScanner(this, libreLinkPatcher, logger);
+        LibreLink libreLink = new LibreLink(this, logger);
+        NfcScanner nfcScanner = new NfcScanner(this, libreLink, logger);
 
         boolean nfcIsSupported = nfcScanner.nfcIsSupported();
 
@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
             logger.ok("NFC is supported");
         }
 
-        AppTester appTester = new AppTester();
+        AppTester appTester = new AppTester(this, logger);
         boolean testsPassed = appTester.runTests();
         if (testsPassed) {
             logger.ok("Tests passed!");
@@ -34,9 +34,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         nfcScanner.listenTags();
-        libreLinkPatcher.listen();
-
-        LibreLinkDbRemover libreLinkDbRemover = new LibreLinkDbRemover(this, logger);
-        libreLinkDbRemover.listen();
+        libreLink.listenBtnClicks();
     }
 }

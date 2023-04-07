@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.widget.TextView;
 
+import java.util.Locale;
+
 public class Logger {
     private final TextView loggerTextView;
     private final Activity activity;
@@ -14,14 +16,17 @@ public class Logger {
     }
 
     protected void inf(String log) {
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("%s\n", log)));
+        String finalLog = log.toLowerCase(Locale.ROOT);
+        activity.runOnUiThread(() -> loggerTextView.append(String.format("%s\n", finalLog)));
     }
 
     protected void ok(String log) {
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("OK: %s\n", log)));
+        String finalLog = log.toLowerCase(Locale.ROOT);
+        activity.runOnUiThread(() -> loggerTextView.append(String.format("OK: %s\n", finalLog)));
     }
 
     protected void error(String log) {
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("ERR: %s\n", log)));
+        String finalLog = log.toLowerCase(Locale.ROOT);
+        activity.runOnUiThread(() -> loggerTextView.append(String.format("ERR: %s\n", finalLog)));
     }
 }

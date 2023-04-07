@@ -9,19 +9,19 @@
         android:layout_height="wrap_content">
 
         <Button
-            android:id="@+id/librelinkBtn"
+            android:id="@+id/sugarAddingBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/patch_librelink"
+            android:text="@string/add_last_scan_to_librelink_db"
             android:layout_below="@id/logTextView"
             android:layout_centerHorizontal="true" />
 
         <Button
-            android:id="@+id/removeLibreLinkDatabase"
+            android:id="@+id/removeLibrelinkDB"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/remove_librelink_database"
-            android:layout_below="@id/librelinkBtn"
+            android:text="@string/remove_librelink_db"
+            android:layout_below="@id/sugarAddingBtn"
             android:layout_centerHorizontal="true" />
 
         <TextView

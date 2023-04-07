@@ -1,6 +1,5 @@
 package com.example.nfc_libre_scan;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 
 import java.io.BufferedReader;
@@ -8,9 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.nio.file.Path;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 public class RootLib {
 
@@ -23,7 +19,57 @@ public class RootLib {
         this.logger = logger;
     }
 
-    public boolean requestRootedProcess() {
+    public void setFilePermission(final String filePath, final int filePermission) throws IOException {
+        final String cmd = String.format("chmod %s %s", filePermission, filePath);
+        boolean ok = this.runCmd(cmd);
+        if (!ok) {
+            throw new IOException(String.format("Setting %s permission to file %s failed.", filePermission, filePath));
+        }
+    }
+
+    public void removeFile(final String filePath) throws IOException {
+        final String isFileExistsCmd = String.format("test -e %s", filePath);
+        boolean fileExists = this.runCmd(isFileExistsCmd);
+        if (!fileExists) {
+            return;
+        }
+        final String fileRemovingCmd = String.format("rm %s", filePath);
+        boolean fileIsRemoved = this.runCmd(fileRemovingCmd);
+        if (!fileIsRemoved) {
+            throw new IOException(String.format("Removing file %s failed.", filePath));
+        }
+    }
+
+    public void copyFile(final String from, final String to) throws IOException {
+        final String cmd = String.format("cp %s %s", from, to);
+        boolean ok = this.runCmd(cmd);
+        if (!ok) {
+            throw new IOException(String.format("Copying file from %s to %s failed.", from, to));
+        }
+    }
+
+    private boolean runCmd(final String command) {
+        final String okMsg = "OKAY!";
+        final String fatalMsg = "FATAL!";
+        final String cmd = String.format("%s && echo %s || echo %s\n", command, okMsg, fatalMsg);
+
+        InputStream inputStream = rootedProcess.getInputStream();
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader br = new BufferedReader(isr);
+
+        OutputStream out = rootedProcess.getOutputStream();
+        try {
+            out.write(cmd.getBytes());
+            out.flush();
+            String result = br.readLine();
+            return result.contains(okMsg);
+        } catch (IOException ignored) {
+        }
+
+        return false;
+    }
+
+    public boolean requestRoot() {
         try {
             Process process = Runtime.getRuntime().exec("su");
 
@@ -43,64 +89,5 @@ public class RootLib {
         } catch (IOException ignored) {
         }
         return false;
-    }
-
-    public void setFilePermission(final String filePath, final int filePermission) throws IOException {
-        final String okMsg = "OKAY!";
-        final String cmd = String.format(Locale.US, "chmod %d %s && echo %s\n", filePermission, filePath, okMsg);
-
-        InputStream inputStream = rootedProcess.getInputStream();
-        InputStreamReader isr = new InputStreamReader(inputStream);
-        BufferedReader br = new BufferedReader(isr);
-
-        OutputStream out = rootedProcess.getOutputStream();
-        out.write(cmd.getBytes());
-        out.flush();
-
-        String result = br.readLine();
-        if (!result.equals(okMsg)) {
-            throw new IOException(String.format(Locale.US, "Can not set %d permission for %s", filePermission, filePath));
-        } else {
-            logger.ok(String.format(Locale.US, "%d permission set for %s", filePermission, filePath));
-        }
-    }
-
-    public void removeFile(final String filePath) throws IOException {
-        final String okMsg = "OKAY!";
-        final String fatalMsg = "FATAL!";
-        final String cmd = String.format("rm %s && echo %s || echo %s\n", filePath, okMsg, fatalMsg);
-
-        InputStream inputStream = rootedProcess.getInputStream();
-        InputStreamReader isr = new InputStreamReader(inputStream);
-        BufferedReader br = new BufferedReader(isr);
-
-        OutputStream out = rootedProcess.getOutputStream();
-        out.write(cmd.getBytes());
-        out.flush();
-        String result = br.readLine();
-        if (!result.equals(okMsg)) {
-            throw new IOException(String.format("%s failed", cmd));
-        } else {
-            logger.ok(String.format("%s done", cmd));
-        }
-    }
-
-    public void copyFile(final String from, final String to) throws IOException {
-        final String okMsg = "OKAY!";
-        final String cmd = String.format("cp %s %s && echo %s\n", from, to, okMsg);
-
-        InputStream inputStream = rootedProcess.getInputStream();
-        InputStreamReader isr = new InputStreamReader(inputStream);
-        BufferedReader br = new BufferedReader(isr);
-
-        OutputStream out = rootedProcess.getOutputStream();
-        out.write(cmd.getBytes());
-        out.flush();
-        String result = br.readLine();
-        if (!result.equals(okMsg)) {
-            throw new IOException(String.format("%s failed", cmd));
-        } else {
-            logger.ok(String.format("%s done", cmd));
-        }
     }
 }
