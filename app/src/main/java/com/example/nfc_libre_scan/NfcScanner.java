@@ -12,12 +12,11 @@ public class NfcScanner implements NfcAdapter.ReaderCallback {
     private final NfcAdapter nfcAdapter;
     private final Activity activity;
     private final Logger logger;
-    private final LibreLink libreLink;
+    private OnLibreMessageListener listener;
 
-    NfcScanner(Activity activity, LibreLink libreLink, Logger logger) {
+    NfcScanner(Activity activity, Logger logger) {
         this.nfcAdapter = NfcAdapter.getDefaultAdapter(activity);
         this.activity = activity;
-        this.libreLink = libreLink;
         this.logger = logger;
     }
 
@@ -55,11 +54,17 @@ public class NfcScanner implements NfcAdapter.ReaderCallback {
             }
 
             libreMessage.handle();
-            libreLink.onLibreMessageReceived(libreMessage);
+            if(listener != null){
+                listener.onLibreMessageReceived(libreMessage);
+            }
         } catch (Exception e) {
             logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
         } finally {
             logger.ok("NfcV tag closed");
         }
+    }
+
+    public void setOnLibreMessageListener(OnLibreMessageListener listener){
+        this.listener = listener;
     }
 }

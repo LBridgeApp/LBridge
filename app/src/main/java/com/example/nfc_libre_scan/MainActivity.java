@@ -12,7 +12,7 @@ public class MainActivity extends AppCompatActivity {
 
         Logger logger = new Logger(this, findViewById(R.id.logTextView));
         LibreLink libreLink = new LibreLink(this, logger);
-        NfcScanner nfcScanner = new NfcScanner(this, libreLink, logger);
+        NfcScanner nfcScanner = new NfcScanner(this, logger);
 
         boolean nfcIsSupported = nfcScanner.nfcIsSupported();
 
@@ -34,6 +34,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         nfcScanner.listenTags();
-        libreLink.listenBtnClicks();
+        libreLink.listen(nfcScanner);
     }
 }

@@ -1,5 +1,5 @@
 package com.example.nfc_libre_scan;
 
-public interface LibreMessageCallback {
+public interface OnLibreMessageListener {
     void onLibreMessageReceived(LibreMessage message);
 }

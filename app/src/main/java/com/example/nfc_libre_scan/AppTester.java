@@ -3,8 +3,8 @@ package com.example.nfc_libre_scan;
 import android.app.Activity;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.example.nfc_libre_scan.librelink_db.RawScan;
-import com.example.nfc_libre_scan.librelink_db.Sensor;
+import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
+import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,16 +59,18 @@ public class AppTester {
 
     private boolean testSensor(SQLiteDatabase db) throws IOException {
         final long rightCRC = 2079731897;
-        Sensor sensor = new Sensor(db);
-        final long calculatedCRC = sensor.getComputedCRC();
+        SensorTable sensorTable = new SensorTable(db);
+        sensorTable.fillClassByValuesInLastSensorRecord();
+        final long calculatedCRC = sensorTable.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 
     private boolean testRawScan(SQLiteDatabase db) throws IOException {
-        final long rightCRC = 1928179073;
+        final long rightCRC = 1875493694;
 
-        RawScan rawScanRecord = new RawScan(db);
-        final long calculatedCRC = rawScanRecord.getComputedCRC();
+        RawScanTable rawScanTableRecord = new RawScanTable(db);
+        rawScanTableRecord.fillClassByValuesInLastRawScanRecord();
+        final long calculatedCRC = rawScanTableRecord.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 }

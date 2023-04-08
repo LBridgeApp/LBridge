@@ -1,6 +1,5 @@
 package com.example.nfc_libre_scan;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.ComponentName;
@@ -10,19 +9,18 @@ import android.database.sqlite.SQLiteDatabase;
 import android.view.View;
 import android.widget.Button;
 
-import com.example.nfc_libre_scan.librelink_db.RawScan;
-import com.example.nfc_libre_scan.librelink_db.SqliteSequence;
+import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
+import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
+import com.example.nfc_libre_scan.librelink_sas_db.SqliteSequence;
 
 import java.io.IOException;
 
-public class LibreLink implements LibreMessageCallback, View.OnClickListener {
+public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
 
     private final Logger logger;
     private LibreMessage libreMessage;
     private final Activity activity;
     private final RootLib rootLib;
-    @SuppressLint("SdCardPath")
-    private final String libreLinkDbPath = "/data/data/com.freestylelibre.app.ru/files/sas.db";
     private final String ourDbPath;
 
     LibreLink(Activity activity, Logger logger) {
@@ -32,11 +30,12 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
         this.ourDbPath = activity.getDatabasePath("sas.db").getAbsolutePath();
     }
 
-    public void listenBtnClicks() {
+    public void listen(NfcScanner scanner) {
         Button sugarAddingBtn = activity.findViewById(R.id.sugarAddingBtn);
         Button databaseRemovingBtn = activity.findViewById(R.id.removeLibrelinkDB);
         sugarAddingBtn.setOnClickListener(this);
         databaseRemovingBtn.setOnClickListener(this);
+        scanner.setOnLibreMessageListener(this);
     }
 
     @Override
@@ -55,7 +54,7 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
             addLastScanToDatabase();
         }
         if (v.getId() == R.id.removeLibrelinkDB) {
-            removeLibreLinkDatabase();
+            removeLibreLinkDatabases();
         }
     }
 
@@ -67,7 +66,7 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
 
         killLibreLink();
         try {
-            rootLib.copyFile(libreLinkDbPath, ourDbPath);
+            rootLib.copyFile(Consts.librelink_sas_db_path, ourDbPath);
             logger.ok("db to our app copied");
         } catch (IOException e) {
             logger.error("Failed to copy db to our app");
@@ -91,7 +90,7 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
         }
 
         try {
-            rootLib.copyFile(ourDbPath, libreLinkDbPath);
+            rootLib.copyFile(ourDbPath, Consts.librelink_sas_db_path);
             logger.ok("edited db to librelink app copied!");
         } catch (IOException e) {
             logger.error("Failed to copy db to librelink app");
@@ -99,7 +98,7 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
         }
 
         try {
-            rootLib.setFilePermission(libreLinkDbPath, 660);
+            rootLib.setFilePermission(Consts.librelink_sas_db_path, 660);
             logger.ok("permission 660 set to db in librelink app");
         } catch (IOException e) {
             logger.error("Failed to set 660 permission to db in librelink app");
@@ -108,13 +107,14 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
         startLibreLink();
     }
 
-    public void removeLibreLinkDatabase() {
+    public void removeLibreLinkDatabases() {
         killLibreLink();
         try {
-            rootLib.removeFile(libreLinkDbPath);
-            logger.ok("LibreLink db removed");
+            rootLib.removeFile(Consts.librelink_sas_db_path);
+            rootLib.removeFile(Consts.librelink_apollo_db_path);
+            logger.ok("LibreLink dbs removed");
         } catch (IOException e) {
-            logger.error("Failed to remove librelink db");
+            logger.error("Failed to remove librelink dbs");
         }
     }
 
@@ -141,13 +141,11 @@ public class LibreLink implements LibreMessageCallback, View.OnClickListener {
         SQLiteDatabase db = SQLiteDatabase.openDatabase(activity.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
         logger.ok("database opened. Trying to write...");
 
-        RawScan rawScanRecord = new RawScan(db, patchInfo, payload);
-        rawScanRecord.writeItselfInDB();
-        logger.ok("RawScan record done.");
+        RawScanTable rawScanTable = new RawScanTable(db);
+        SensorTable sensorTable = new SensorTable(db);
 
-        SqliteSequence sqliteSequenceRecord = new SqliteSequence(db);
-        sqliteSequenceRecord.updateItselfInDb();
-        logger.ok("sqlite_sequence table updated.");
+        rawScanTable.addNewRecord(patchInfo, payload);
+        logger.ok("RawScan record done.");
 
         db.close();
         logger.ok("database closed");
