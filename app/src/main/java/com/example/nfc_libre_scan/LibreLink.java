@@ -7,11 +7,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.view.View;
-import android.widget.Button;
 
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
-import com.example.nfc_libre_scan.librelink_sas_db.SqliteSequence;
 
 import java.io.IOException;
 
@@ -30,11 +28,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         this.ourDbPath = activity.getDatabasePath("sas.db").getAbsolutePath();
     }
 
-    public void listen(NfcScanner scanner) {
-        Button sugarAddingBtn = activity.findViewById(R.id.sugarAddingBtn);
-        Button databaseRemovingBtn = activity.findViewById(R.id.removeLibrelinkDB);
-        sugarAddingBtn.setOnClickListener(this);
-        databaseRemovingBtn.setOnClickListener(this);
+    public void listenLibreMessages(NfcScanner scanner) {
         scanner.setOnLibreMessageListener(this);
     }
 

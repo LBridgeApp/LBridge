@@ -47,7 +47,7 @@ public class NfcScanner implements NfcAdapter.ReaderCallback {
         logger.inf("\n----------------\n");
         logger.ok("NfcV tag discovered");
         try (NfcV nfcVTag = NfcV.get(tag)) {
-            LibreMessage libreMessage = new LibreMessage(nfcVTag, logger);
+            LibreMessage libreMessage = new LibreMessage(activity, nfcVTag, logger);
             if (!nfcVTag.isConnected()) {
                 nfcVTag.connect();
                 logger.ok("NfcV tag connected");

@@ -8,6 +8,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <TextView
+            android:id="@+id/logTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:padding="16dp"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:text="@string/app_logs_come_here"
+            android:background="#000000" />
+
         <Button
             android:id="@+id/sugarAddingBtn"
             android:layout_width="wrap_content"
@@ -24,15 +35,30 @@
             android:layout_below="@id/sugarAddingBtn"
             android:layout_centerHorizontal="true" />
 
+
         <TextView
-            android:id="@+id/logTextView"
+            android:id="@+id/currentBgView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
             android:padding="16dp"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
-            android:background="#000000" />
+            android:background="#000000"
+            android:text="@string/current_bg_comes_here"
+            android:layout_below="@id/removeLibrelinkDB" />
+
+        <TextView
+            android:id="@+id/bgHistoryView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:padding="16dp"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:background="#000000"
+            android:text="@string/historic_bgs_come_here"
+            android:layout_below="@id/currentBgView" />
 
     </RelativeLayout>
 </ScrollView>

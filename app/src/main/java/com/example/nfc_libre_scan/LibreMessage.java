@@ -1,15 +1,38 @@
 package com.example.nfc_libre_scan;
 
+import android.content.Context;
 import android.nfc.TagLostException;
 import android.nfc.tech.NfcV;
+
+import com.hg4.oopalgorithm.oopalgorithm.AlgorithmRunner;
+import com.hg4.oopalgorithm.oopalgorithm.CurrentBg;
+import com.hg4.oopalgorithm.oopalgorithm.HistoricBg;
+import com.hg4.oopalgorithm.oopalgorithm.OOPResults;
 
 import java.io.IOException;
 import java.util.Arrays;
 
 public class LibreMessage {
+    public enum GlucoseUnit {
+        MGDL("mg/dL"),
+        MMOL("mmol/L");
+
+        private final String unitText;
+        GlucoseUnit(String unitText){
+            this.unitText = unitText;
+        }
+
+        public String getString() {
+            return this.unitText;
+        }
+    }
+
+    private final Context context;
     private final Logger logger;
     private final NfcV nfcVTag;
+    private byte[] patchUID;
     private byte[] patchInfo;
+    private String libreSN;
 
     public byte[] getPatchInfo() {
         return this.patchInfo;
@@ -21,7 +44,22 @@ public class LibreMessage {
         return this.payload;
     }
 
-    LibreMessage(NfcV nfcVTag, Logger logger) {
+    private OOPResults oopResults;
+
+    private OOPResults getOopResults() {
+        return oopResults;
+    }
+
+    public CurrentBg getCurrentBgObject() {
+        return getOopResults().getCurrentBgObject();
+    }
+
+    public HistoricBg[] getHistoricBgArray() {
+        return getOopResults().getHistoricBgArray();
+    }
+
+    LibreMessage(Context context, NfcV nfcVTag, Logger logger) {
+        this.context = context;
         this.logger = logger;
         this.nfcVTag = nfcVTag;
     }
@@ -29,19 +67,11 @@ public class LibreMessage {
     public void handle() throws Exception {
         logger.inf("Handling libre message...");
 
-        final byte[] patchUID = queryPatchUID();
+        patchUID = queryPatchUID();
         patchInfo = queryPatchInfo();
         payload = queryPayload();
-
-        boolean payloadIsCorrect = verifyPayload(payload);
-        if (payloadIsCorrect) {
-            logger.ok("Payload is correct.");
-        } else {
-            throw new Exception("Payload is not correct.");
-        }
-        String serialNumber = decodeSerialNumberKey(patchUID);
-        logger.ok(String.format("Serial number: %s", serialNumber));
-
+        libreSN = decodeSerialNumber();
+        oopResults = queryOOPResults();
         int l = 5;
     }
 
@@ -52,6 +82,7 @@ public class LibreMessage {
         // 0x07 - номер блока, с которого нужно начать чтение.
         final byte[] cmd = new byte[]{0x02, (byte) 0xa1, 0x07};
         byte[] patchInfo = runCmd(cmd);
+        // Нужно отбросить первый нулевой байт
         patchInfo = Arrays.copyOfRange(patchInfo, 1, patchInfo.length);
         logger.ok("PatchInfo retrieved.");
         return patchInfo;
@@ -92,6 +123,14 @@ public class LibreMessage {
             System.arraycopy(oneBlock, startBlock, data, i * 8, 8);
         }
         logger.ok("Payload retrieved.");
+
+        boolean payloadIsCorrect = verifyPayload(data);
+        if (payloadIsCorrect) {
+            logger.ok("Payload is correct.");
+        } else {
+            throw new IOException("Payload is not correct.");
+        }
+
         // if data length is more than 344 return first 344 bytes
         return Arrays.copyOfRange(data, 0, LIBRE_1_2_FRAM_SIZE);
     }
@@ -104,13 +143,14 @@ public class LibreMessage {
         return queryUID();
     }
 
-    public String decodeSerialNumberKey(byte[] patchUID) {
-        byte[] serialBuffer = new byte[3 + 8];
-        System.arraycopy(patchUID, 0, serialBuffer, 3, 8);
-        return decodeSerialNumber(serialBuffer);
+    private OOPResults queryOOPResults() {
+        long timestamp = System.currentTimeMillis();
+        return AlgorithmRunner.RunAlgorithm(timestamp, context, payload, patchUID, patchInfo, false, libreSN);
     }
 
-    public String decodeSerialNumber(byte[] input) {
+    public String decodeSerialNumber() {
+        byte[] serialBuffer = new byte[3 + 8];
+        System.arraycopy(patchUID, 0, serialBuffer, 3, 8);
 
         String[] lookupTable =
                 {
@@ -122,7 +162,7 @@ public class LibreMessage {
         byte[] uuidShort = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
         int i;
 
-        for (i = 2; i < 8; i++) uuidShort[i - 2] = input[(2 + 8) - i];
+        for (i = 2; i < 8; i++) uuidShort[i - 2] = serialBuffer[(2 + 8) - i];
         uuidShort[6] = 0x00;
         uuidShort[7] = 0x00;
 
@@ -177,6 +217,10 @@ public class LibreMessage {
         return reverseCrc;
     }
 
+    // Constants for libre1/2 FRAM
+    private final int FRAM_RECORD_SIZE = 6;
+    private final int TREND_START = 28;
+    private final int HISTORY_START = 124;
     private final int LIBRE_1_2_FRAM_SIZE = 344;
 
     private final long[] crc16table = {
