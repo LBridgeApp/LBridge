@@ -6,4 +6,6 @@
     <string name="historic_bgs_come_here">Historic BGs come here.</string>
     <string name="current_bg_comes_here">Current BG comes here.</string>
     <string name="app_logs_come_here">App logs come here.</string>
+    <string name="mmol_l">mmol/L</string>
+    <string name="mg_dl">mg/dl</string>
 </resources>

@@ -60,11 +60,10 @@ public class AlgorithmRunner {
                 for (GlucoseValue glucoseValue : data_processing_outputs.getAlgorithmResults().getHistoricGlucose()) {
                     Log.e(TAG, "  id " + glucoseValue.getId() + " value " + glucoseValue.getValue() + " quality " + glucoseValue.getDataQuality());
                 }
-                OOPResults.setHistoricBg(data_processing_outputs.getAlgorithmResults().getHistoricGlucose());
+                OOPResults.setHistoricBgArray(data_processing_outputs.getAlgorithmResults().getHistoricGlucose());
             } else {
                 Log.e(TAG, "getAlgorithmResults.getHistoricGlucose() returned null");
             }
-            //Log.e(TAG, "gson:" + OOPResults.toGson());
             return OOPResults;
         } catch (DataProcessingException e) {
             Log.e(TAG, "cought DataProcessingException on data_processing_native.processScan ", e);

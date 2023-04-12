@@ -1,20 +1,22 @@
 package com.hg4.oopalgorithm.oopalgorithm;
 
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
-import com.example.nfc_libre_scan.LibreMessage;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 public class CurrentBg {
-    final long timestamp;
-
+    final long scanUnixTimestamp;
     final double bg;
-    final int currentTime;
+    final int currentSensorTime;
     final TrendArrow currentTrend;
-    final LibreMessage.GlucoseUnit glucoseUnit;
+    final GlucoseUnit glucoseUnit;
 
-    public CurrentBg(long timestamp, double currentBg, int currentTime, TrendArrow currentTrend, LibreMessage.GlucoseUnit glucoseUnit) {
-        this.timestamp = timestamp;
+    public CurrentBg(long scanUnixTimestamp, double currentBg, int currentSensorTime, TrendArrow currentTrend, GlucoseUnit glucoseUnit) {
+        this.scanUnixTimestamp = scanUnixTimestamp;
         this.bg = currentBg;
-        this.currentTime = currentTime;
+        this.currentSensorTime = currentSensorTime;
         this.currentTrend = currentTrend;
         this.glucoseUnit = glucoseUnit;
     }
@@ -27,20 +29,31 @@ public class CurrentBg {
         return bg;
     }
 
-    public CurrentBg convertBG(LibreMessage.GlucoseUnit needToConvert) throws Exception {
-        if (needToConvert == LibreMessage.GlucoseUnit.MMOL && this.glucoseUnit == LibreMessage.GlucoseUnit.MGDL) {
-            return new CurrentBg(timestamp, bg / 18, currentTime, currentTrend, LibreMessage.GlucoseUnit.MMOL);
-        } else if (needToConvert == LibreMessage.GlucoseUnit.MGDL && this.glucoseUnit == LibreMessage.GlucoseUnit.MMOL) {
-            return new CurrentBg(timestamp, bg * 18, currentTime, currentTrend, LibreMessage.GlucoseUnit.MGDL);
-        }
-        throw new Exception("Glucose unit is not present.");
+    public CurrentBg convertBG(GlucoseUnit unitToConvert) {
+        return new CurrentBg(scanUnixTimestamp, unitToConvert.convertFrom(bg, this.glucoseUnit), currentSensorTime, currentTrend, unitToConvert);
     }
 
-    public int getTime() {
-        return this.getTime();
+    public long getSensorTimeAsUnix(){
+        return this.scanUnixTimestamp;
     }
 
-    public LibreMessage.GlucoseUnit getGlucoseUnit() {
+    public int getCurrentSensorTime() {
+        return this.currentSensorTime;
+    }
+
+    public ZonedDateTime getSensorTimeAsUTC(){
+        //oOPResults.timestamp + (historicBg.time - oOPResults.currentTime) * 60000;
+        return Instant.ofEpochMilli(this.scanUnixTimestamp)
+                .atZone(ZoneId.of("UTC"));
+    }
+
+    public ZonedDateTime getSensorTimeAsLocalTime(){
+        ZonedDateTime UTC = getSensorTimeAsUTC();
+        ZoneId zoneId = ZoneId.systemDefault();
+        return UTC.withZoneSameInstant(zoneId);
+    }
+
+    public GlucoseUnit getGlucoseUnit() {
         return glucoseUnit;
     }
 }

@@ -1,42 +1,56 @@
 package com.hg4.oopalgorithm.oopalgorithm;
 
-import com.example.nfc_libre_scan.LibreMessage;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 /* compiled from: OOPResultsContainer.java */
 /* loaded from: classes.dex */
 public class HistoricBg {
-
-    final int time;
+    final long scanUnixTimestamp;
+    final int historicSensorTime;
+    final int currentSensorTime;
     final double bg;
     final int quality;
-    final LibreMessage.GlucoseUnit glucoseUnit;
+    final GlucoseUnit glucoseUnit;
 
     public double getBG(){
         return this.bg;
     }
 
-    public int getTime() {
-        return this.time;
+    public int getHistoricSensorTime() {
+        return this.historicSensorTime;
     }
 
-    public LibreMessage.GlucoseUnit getGlucoseUnit() {
+    public GlucoseUnit getGlucoseUnit() {
         return glucoseUnit;
     }
 
-    public HistoricBg convertBG(LibreMessage.GlucoseUnit needToConvert) throws Exception {
-        if (needToConvert == LibreMessage.GlucoseUnit.MMOL && this.glucoseUnit == LibreMessage.GlucoseUnit.MGDL) {
-            return new HistoricBg(time, bg / 18, quality, LibreMessage.GlucoseUnit.MMOL);
-        } else if (needToConvert == LibreMessage.GlucoseUnit.MGDL && this.glucoseUnit == LibreMessage.GlucoseUnit.MMOL) {
-            return new HistoricBg(time, bg * 18, quality, LibreMessage.GlucoseUnit.MGDL);
-        }
-        throw new Exception("Glucose unit is not present.");
+    public HistoricBg convertBG(GlucoseUnit unitToConvert) {
+        return new HistoricBg(scanUnixTimestamp, historicSensorTime, currentSensorTime, unitToConvert.convertFrom(bg, this.glucoseUnit), quality, unitToConvert);
+    }
+
+    public ZonedDateTime getSensorTimeAsUTC(){
+        //oOPResults.timestamp + (historicBg.time - oOPResults.currentTime) * 60000;
+        long sensorTimeUnix = this.scanUnixTimestamp + (this.historicSensorTime - this.currentSensorTime) * 60 * 1_000L;
+
+        return Instant.ofEpochMilli(sensorTimeUnix)
+                .atZone(ZoneId.of("UTC"));
+    }
+
+    public ZonedDateTime getSensorTimeAsLocalTime(){
+        ZonedDateTime UTC = getSensorTimeAsUTC();
+        ZoneId zoneId = ZoneId.systemDefault();
+        return UTC.withZoneSameInstant(zoneId);
     }
 
     /* JADX INFO: Access modifiers changed from: package-private */
-    public HistoricBg(int time, double bg, int quality, LibreMessage.GlucoseUnit glucoseUnit) {
+    public HistoricBg(long scanUnixTimestamp, int historicSensorTime, int currentSensorTime, double bg, int quality, GlucoseUnit glucoseUnit) {
+        this.scanUnixTimestamp = scanUnixTimestamp;
         this.bg = bg;
         this.quality = quality;
-        this.time = time;
+        this.historicSensorTime = historicSensorTime;
+        this.currentSensorTime = currentSensorTime;
         this.glucoseUnit = glucoseUnit;
     }
 }

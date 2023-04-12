@@ -2,22 +2,28 @@ package com.hg4.oopalgorithm.oopalgorithm;
 
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.GlucoseValue;
-import com.example.nfc_libre_scan.LibreMessage;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /* JADX INFO: Access modifiers changed from: package-private */
 /* compiled from: OOPResultsContainer.java */
 /* loaded from: classes.dex */
 public class OOPResults {
+    private final long scanUnixTimestamp;
+    private final int currentSensorTime;
     CurrentBg currentBg;
-    HistoricBg[] historicBg;
-    public OOPResults(long timestamp, int currentBg, int currentTime, TrendArrow currentTrend) {
-        this.currentBg = new CurrentBg(timestamp, currentBg, currentTime, currentTrend, LibreMessage.GlucoseUnit.MGDL);
+    HistoricBg[] historicBgArray = new HistoricBg[0];
+    public OOPResults(long scanUnixTimestamp, int currentBg, int currentSensorTime, TrendArrow currentTrend) {
+        this.scanUnixTimestamp = scanUnixTimestamp;
+        this.currentSensorTime = currentSensorTime;
+        this.currentBg = new CurrentBg(scanUnixTimestamp, currentBg, currentSensorTime, currentTrend, GlucoseUnit.MGDL);
     }
 
     public HistoricBg[] getHistoricBgArray(){
-        return this.historicBg;
+        return this.historicBgArray;
     }
 
     public CurrentBg getCurrentBgObject(){
@@ -25,17 +31,20 @@ public class OOPResults {
     }
 
     /* JADX INFO: Access modifiers changed from: package-private */
-    public void setHistoricBg(List<GlucoseValue> historicGlucose) {
+    public void setHistoricBgArray(List<GlucoseValue> historicGlucose) {
         if (historicGlucose != null) {
-            this.historicBg = new HistoricBg[historicGlucose.size()];
+            HistoricBg[] historicBgs = new HistoricBg[historicGlucose.size()];
             for (int i = 0; i < historicGlucose.size(); i++) {
                 GlucoseValue glucoseValue = historicGlucose.get(i);
                 int quality = glucoseValue.getDataQuality() == 0 ? 0 : 1;
-                int time = glucoseValue.getId();
+                int historicSensorTime = glucoseValue.getId();
                 double bg = glucoseValue.getValue();
-                HistoricBg historicBg = new HistoricBg(time, bg, quality, LibreMessage.GlucoseUnit.MGDL);
-                this.historicBg[i] = historicBg;
+                if(quality == 0){
+                    HistoricBg historicBg = new HistoricBg(scanUnixTimestamp, historicSensorTime, currentSensorTime, bg, quality, GlucoseUnit.MGDL);
+                    historicBgs[i] = historicBg;
+                }
             }
+            this.historicBgArray = Arrays.stream(historicBgs).filter(Objects::nonNull).toArray(HistoricBg[]::new);
         }
     }
 

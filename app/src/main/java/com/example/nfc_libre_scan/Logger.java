@@ -17,16 +17,16 @@ public class Logger {
 
     protected void inf(String log) {
         String finalLog = log.toLowerCase(Locale.ROOT);
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("%s\n", finalLog)));
+        activity.runOnUiThread(() -> loggerTextView.append(String.format("\n%s", finalLog)));
     }
 
     protected void ok(String log) {
         String finalLog = log.toLowerCase(Locale.ROOT);
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("OK: %s\n", finalLog)));
+        activity.runOnUiThread(() -> loggerTextView.append(String.format("\nOK: %s", finalLog)));
     }
 
     protected void error(String log) {
         String finalLog = log.toLowerCase(Locale.ROOT);
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("ERR: %s\n", finalLog)));
+        activity.runOnUiThread(() -> loggerTextView.append(String.format("\nERR: %s", finalLog)));
     }
 }

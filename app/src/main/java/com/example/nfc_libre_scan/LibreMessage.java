@@ -13,20 +13,6 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class LibreMessage {
-    public enum GlucoseUnit {
-        MGDL("mg/dL"),
-        MMOL("mmol/L");
-
-        private final String unitText;
-        GlucoseUnit(String unitText){
-            this.unitText = unitText;
-        }
-
-        public String getString() {
-            return this.unitText;
-        }
-    }
-
     private final Context context;
     private final Logger logger;
     private final NfcV nfcVTag;
