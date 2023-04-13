@@ -20,7 +20,7 @@ public class MyContextWrapper extends ContextWrapper {
     public MyContextWrapper(Context base) {
         super(base);
         this.mBase = base;
-        Log.e(TAG, "MyContextWrapper.MyContextWrapper() called ");
+        Log.d(TAG, "MyContextWrapper.MyContextWrapper() called ");
     }
 
     /* JADX INFO: Access modifiers changed from: package-private */
@@ -30,12 +30,12 @@ public class MyContextWrapper extends ContextWrapper {
 
     @Override // android.content.ContextWrapper, android.content.Context
     public String getPackageCodePath() {
-        Log.e(TAG, "MyContextWrapper.getPackageCodePath() called mBase.getPackageCodePath() = " + this.mBase.getPackageCodePath());
+        Log.d(TAG, "MyContextWrapper.getPackageCodePath() called mBase.getPackageCodePath() = " + this.mBase.getPackageCodePath());
         String originalApkName = getPackageCodePathNoCreate(this.mBase);
-        Log.e(TAG, "MyContextWrapper newpath = " + originalApkName);
+        Log.d(TAG, "MyContextWrapper newpath = " + originalApkName);
         File f = new File(originalApkName);
         if (f.exists() && !f.isDirectory()) {
-            Log.e(TAG, "MyContextWrapper apk exists, returning it = " + originalApkName);
+            Log.d(TAG, "MyContextWrapper apk exists, returning it = " + originalApkName);
         } else {
             try {
                 Resources res = getResources();
@@ -49,9 +49,9 @@ public class MyContextWrapper extends ContextWrapper {
                         break;
                     }
                     out.write(b, 0, readBytes);
-                    Log.e(TAG, "MyContextWrapper succesfully read  = " + readBytes);
+                    Log.d(TAG, "MyContextWrapper succesfully read  = " + readBytes);
                 }
-                Log.e(TAG, "MyContextWrapper succesfully wrote file  = " + originalApkName);
+                Log.d(TAG, "MyContextWrapper succesfully wrote file  = " + originalApkName);
                 out.close();
             } catch (IOException e) {
                 Log.e(TAG, "Error: reading resource file", e);

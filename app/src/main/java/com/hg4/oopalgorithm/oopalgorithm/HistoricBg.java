@@ -43,8 +43,6 @@ public class HistoricBg {
         ZoneId zoneId = ZoneId.systemDefault();
         return UTC.withZoneSameInstant(zoneId);
     }
-
-    /* JADX INFO: Access modifiers changed from: package-private */
     public HistoricBg(long scanUnixTimestamp, int historicSensorTime, int currentSensorTime, double bg, int quality, GlucoseUnit glucoseUnit) {
         this.scanUnixTimestamp = scanUnixTimestamp;
         this.bg = bg;

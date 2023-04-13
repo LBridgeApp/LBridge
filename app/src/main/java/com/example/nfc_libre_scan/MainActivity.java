@@ -32,8 +32,8 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Thread.setDefaultUncaughtExceptionHandler(new CriticalErrorHandler(this.getApplicationContext()));
         setContentView(R.layout.activity_main);
-
 
         logger = new Logger(this, findViewById(R.id.logTextView));
         NfcScanner nfcScanner = new NfcScanner(this, logger);

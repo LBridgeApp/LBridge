@@ -45,12 +45,12 @@ public class LibreState {
             edit.putString(SAVED_SENDOR_ID, SAVED_NA);
         }
         edit.commit();
-        Log.e(TAG, "Saved newState for sensorid " + sensorid + ":  compositeState = " + Arrays.toString(compositeState) + " attenuationState = " + Arrays.toString(attenuationState));
+        Log.d(TAG, "Saved newState for sensorid " + sensorid + ":  compositeState = " + Arrays.toString(compositeState) + " attenuationState = " + Arrays.toString(attenuationState));
     }
 
     public static LibreUsState getStateForSensor(String sensorid, Context context) {
         if (sensorid == null) {
-            Log.e(TAG, "dabear: shortcutting gettingstate, as sensorid was null");
+            Log.d(TAG, "dabear: shortcutting gettingstate, as sensorid was null");
             return getDefaultState();
         }
         SharedPreferences prefs = context.getSharedPreferences(TAG, 0);
@@ -58,10 +58,10 @@ public class LibreState {
         String savedCompositeState = prefs.getString(COMPOSITE_STATE, SAVED_NA);
         String savedAttenuationState = prefs.getString(ATTENUATION_STATE, SAVED_NA);
         if (savedstatesensorid.equals(SAVED_NA) || savedCompositeState.equals(SAVED_NA) || savedAttenuationState.equals(SAVED_NA)) {
-            Log.e(TAG, "dabear: returning defaultstate to caller, we did not have sensordata stored on disk");
+            Log.d(TAG, "dabear: returning defaultstate to caller, we did not have sensordata stored on disk");
             return getAndSaveDefaultStateForSensor(sensorid, context);
         } else if (!savedstatesensorid.equals(sensorid)) {
-            Log.e(TAG, "dabear: returning defaultstate to caller, new sensorid detected: " + sensorid);
+            Log.d(TAG, "dabear: returning defaultstate to caller, new sensorid detected: " + sensorid);
             return getAndSaveDefaultStateForSensor(sensorid, context);
         } else {
             LibreUsState libreUsState = new LibreUsState();

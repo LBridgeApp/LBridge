@@ -8,4 +8,6 @@
     <string name="app_logs_come_here">App logs come here.</string>
     <string name="mmol_l">mmol/L</string>
     <string name="mg_dl">mg/dl</string>
+    <string name="restart_app">Restart app</string>
+    <string name="critical_error_occurred">Critical error occurred</string>
 </resources>

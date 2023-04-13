@@ -6,6 +6,8 @@ import com.abbottdiabetescare.flashglucose.sensorabstractionservice.AlarmConfigu
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.ApplicationRegion;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.AttenuationConfiguration;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.NonActionableConfiguration;
+import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
+import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.AlgorithmResults;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingException;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingNative;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingOutputs;
@@ -13,6 +15,9 @@ import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessi
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.GlucoseValue;
 import com.no.bjorninge.librestate.LibreState;
 import com.no.bjorninge.librestate.LibreUsState;
+
+import java.util.Arrays;
+import java.util.Objects;
 
 /* loaded from: classes.dex */
 public class AlgorithmRunner {
@@ -25,57 +30,63 @@ public class AlgorithmRunner {
         data_processing_native.initialize(my_context_wrapper);
         byte[] bDat = {-27, 0, 3, 2, -98, 10};
         boolean bret = data_processing_native.isPatchSupported(bDat, ApplicationRegion.LEVEL_2);
-        Log.e(TAG, "data_processing_native.isPatchSupported11 returned " + bret);
+        Log.d(TAG, "data_processing_native.isPatchSupported11 returned " + bret);
         if (!bret) {
-            Log.e(TAG, "gson:");
-            return new OOPResults(timestamp, -1, 0, null);
+            //return new OOPResults(timestamp, -1, 0, null);
+            return new OOPResults(null, null);
         }
         AlarmConfiguration alarm_configuration = new AlarmConfiguration(70, 240);
         NonActionableConfiguration non_actionable_configuration = new NonActionableConfiguration(false, true, 720, 70, 500, -2.0d, 2.0d);
         int sensorScanTimestamp = 309060784 + 36000;
         if (usedefaultstatealways) {
-            Log.e(TAG, "dabear: using default oldstate");
+            Log.d(TAG, "dabear: using default oldstate");
             libreUsState = LibreState.getDefaultState();
         } else {
-            Log.e(TAG, "dabear:  getting state from persistent storage:");
+            Log.d(TAG, "dabear:  getting state from persistent storage:");
             libreUsState = LibreState.getStateForSensor(sensorid, context);
         }
-        Log.e(TAG, "libreUsState is now :" + libreUsState.toS());
+        Log.d(TAG, "libreUsState is now :" + libreUsState.toS());
         AttenuationConfiguration attenuationConfiguration = new AttenuationConfiguration(20160, true, true, true, true);
         try {
             DataProcessingOutputs data_processing_outputs = data_processing_native.processScan(alarm_configuration, non_actionable_configuration, attenuationConfiguration, patchUid, patchInfo, packet, 309060784, sensorScanTimestamp, 60, 20160, -21600000, libreUsState.compositeState, libreUsState.attenuationState);
-            Log.e(TAG, "data_processing_native.processScan returned successfully " + data_processing_outputs);
-            if (data_processing_outputs == null) {
-                Log.e(TAG, "data_processing_native.processScan returned null");
-                Log.e(TAG, "gson:");
-                LibreState.getAndSaveDefaultStateForSensor("-NA-", context);
-                return new OOPResults(timestamp, -4, 0, null);
-            }
-            Log.e(TAG, "data_processing_native.processScan returned successfully bg = " + data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getValue() + " id = " + data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getId());
+            Log.d(TAG, "data_processing_native.processScan returned successfully " + data_processing_outputs);
+            Log.d(TAG, "data_processing_native.processScan returned successfully bg = " + data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getValue() + " id = " + data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getId());
             if (sensorid != null) {
                 LibreState.saveSensorState(sensorid, data_processing_outputs.getNewCompositeState(), data_processing_outputs.getNewAttenuationState(), context);
             }
-            OOPResults OOPResults = new OOPResults(timestamp, data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getValue(), data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getId(), data_processing_outputs.getAlgorithmResults().getTrendArrow());
-            if (data_processing_outputs.getAlgorithmResults().getHistoricGlucose() != null) {
-                for (GlucoseValue glucoseValue : data_processing_outputs.getAlgorithmResults().getHistoricGlucose()) {
-                    Log.e(TAG, "  id " + glucoseValue.getId() + " value " + glucoseValue.getValue() + " quality " + glucoseValue.getDataQuality());
-                }
-                OOPResults.setHistoricBgArray(data_processing_outputs.getAlgorithmResults().getHistoricGlucose());
-            } else {
-                Log.e(TAG, "getAlgorithmResults.getHistoricGlucose() returned null");
+
+            AlgorithmResults algorithmResults = data_processing_outputs.getAlgorithmResults();
+            int realTimeGlucose = algorithmResults.getRealTimeGlucose().getValue();
+            int currentSensorTime = algorithmResults.getRealTimeGlucose().getId();
+            TrendArrow trendArrow = algorithmResults.getTrendArrow();
+
+            CurrentBg currentBg = new CurrentBg(timestamp, realTimeGlucose, currentSensorTime, trendArrow, GlucoseUnit.MGDL);
+
+            GlucoseValue[] glucoseValues = data_processing_outputs.getAlgorithmResults().getHistoricGlucose().toArray(new GlucoseValue[0]);
+            HistoricBg[] historicBgs = new HistoricBg[glucoseValues.length];
+            for (int k = 0; k < glucoseValues.length; k++) {
+                Log.d(TAG, "  id " + glucoseValues[k].getId() + " value " + glucoseValues[k].getValue() + " quality " + glucoseValues[k].getDataQuality());
+
+                int historicSensorTime = glucoseValues[k].getId();
+                int historicGlucose = glucoseValues[k].getValue();
+                int quality = glucoseValues[k].getDataQuality() == 0 ? 0 : 1;
+                historicBgs[k] = new HistoricBg(timestamp, historicSensorTime, currentSensorTime, historicGlucose, quality, GlucoseUnit.MGDL);
             }
-            return OOPResults;
+            historicBgs = Arrays.stream(historicBgs).filter(Objects::nonNull).filter(d -> d.quality == 0).toArray(HistoricBg[]::new);
+            return new OOPResults(currentBg, historicBgs);
         } catch (DataProcessingException e) {
             Log.e(TAG, "cought DataProcessingException on data_processing_native.processScan ", e);
             if (e.getResult() == DataProcessingResult.FATAL_ERROR_BAD_ARGUMENTS) {
                 Log.e(TAG, "Exception is FATAL_ERROR_BAD_ARGUMENTS reseting state");
             }
             LibreState.getAndSaveDefaultStateForSensor("-NA-", context);
-            return new OOPResults(timestamp, -2, 0, null);
+            //return new OOPResults(timestamp, -2, 0, null);
+            return new OOPResults(null, null);
         } catch (Exception e2) {
             Log.e(TAG, "cought exception on data_processing_native.processScan ", e2);
             LibreState.getAndSaveDefaultStateForSensor("-NA-", context);
-            return new OOPResults(timestamp, -3, 0, null);
+            //return new OOPResults(timestamp, -3, 0, null);
+            return new OOPResults(null, null);
         }
     }
 
