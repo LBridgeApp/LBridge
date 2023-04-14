@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.view.View;
 
+import com.example.nfc_libre_scan.libre.Libre;
+import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
 
@@ -28,8 +30,8 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         this.ourDbPath = activity.getDatabasePath("sas.db").getAbsolutePath();
     }
 
-    public void listenLibreMessages(NfcScanner scanner) {
-        scanner.setOnLibreMessageListener(this);
+    public void listenLibreMessages(Libre libre) {
+        libre.setLibreListener(this);
     }
 
     @Override
@@ -130,7 +132,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
 
     private void editDatabase() throws IOException {
         byte[] patchInfo = libreMessage.getPatchInfo();
-        byte[] payload = libreMessage.getPayload();
+        byte[] payload = libreMessage.getPayload().getValue();
 
         SQLiteDatabase db = SQLiteDatabase.openDatabase(activity.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
         logger.ok("database opened. Trying to write...");

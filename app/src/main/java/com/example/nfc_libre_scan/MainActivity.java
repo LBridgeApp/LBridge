@@ -11,11 +11,12 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
-import com.hg4.oopalgorithm.oopalgorithm.CurrentBg;
-import com.hg4.oopalgorithm.oopalgorithm.GlucoseUnit;
-import com.hg4.oopalgorithm.oopalgorithm.HistoricBg;
+import com.example.nfc_libre_scan.libre.Libre;
+import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.oop1.hg4.oopalgorithm.oopalgorithm.CurrentBg;
+import com.oop1.hg4.oopalgorithm.oopalgorithm.GlucoseUnit;
+import com.oop1.hg4.oopalgorithm.oopalgorithm.HistoricBg;
 
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
@@ -36,16 +37,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         setContentView(R.layout.activity_main);
 
         logger = new Logger(this, findViewById(R.id.logTextView));
-        NfcScanner nfcScanner = new NfcScanner(this, logger);
-
-        boolean nfcIsSupported = nfcScanner.nfcIsSupported();
-
-        if (!nfcIsSupported) {
-            logger.error("NFC is not supported");
-            return;
-        } else {
-            logger.ok("NFC is supported");
-        }
 
         AppTester appTester = new AppTester(this, logger);
         boolean testsPassed = appTester.runTests();
@@ -58,12 +49,16 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         }
 
         vibrator = ContextCompat.getSystemService(this, Vibrator.class);
+
+        Libre libre = new Libre(this, logger);
+        libre.listenSensor();
+        libre.setLibreListener(this);
+
         LibreLink libreLink = new LibreLink(this, logger);
+        libreLink.listenLibreMessages(libre);
 
         currentBgView = this.findViewById(R.id.currentBgView);
         bgHistoryView = this.findViewById(R.id.bgHistoryView);
-
-        nfcScanner.listenTags();
 
         Button sugarAddingBtn = this.findViewById(R.id.sugarAddingBtn);
         Button databaseRemovingBtn = this.findViewById(R.id.removeLibrelinkDB);
@@ -71,8 +66,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         sugarAddingBtn.setOnClickListener(libreLink);
         databaseRemovingBtn.setOnClickListener(libreLink);
 
-        libreLink.listenLibreMessages(nfcScanner);
-        nfcScanner.setOnLibreMessageListener(this);
 
         if (glucoseUnit == GlucoseUnit.MMOL) {
             ((RadioButton) this.findViewById(R.id.mmolGlucoseUnit)).setChecked(true);

@@ -1,4 +1,4 @@
-package com.no.bjorninge.librestate;
+package com.oop1.no.bjorninge.librestate;
 
 import android.content.Context;
 import android.content.SharedPreferences;

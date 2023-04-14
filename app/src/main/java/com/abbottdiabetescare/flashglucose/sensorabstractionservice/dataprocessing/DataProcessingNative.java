@@ -103,6 +103,6 @@ public final class DataProcessingNative implements DataProcessing {
         if (processScan == DataProcessingResult.SUCCESS) {
             return new DataProcessingOutputs((int) out.value(), (int) out2.value(), (boolean) out3.value(), (boolean) out4.value(), (byte[]) out5.value(), (byte[]) out6.value(), (AlgorithmResults) out7.value());
         }
-        throw new DataProcessingException(processScan, (List<PatchEvent>) out8.value(), (Byte) out9.value());
+        throw new DataProcessingException(processScan, (List<PatchEvent>) out8.value(), (byte) out9.value());
     }
 }

@@ -1,6 +1,6 @@
-package com.no.bjorninge.librestate;
+package com.oop1.no.bjorninge.librestate;
 
-import com.hg4.oopalgorithm.oopalgorithm.Utils;
+import com.oop1.hg4.oopalgorithm.oopalgorithm.Utils;
 
 /* loaded from: classes.dex */
 public class LibreUsState {

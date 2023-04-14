@@ -1,4 +1,4 @@
-package com.hg4.oopalgorithm.oopalgorithm;
+package com.oop1.hg4.oopalgorithm.oopalgorithm;
 
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
 

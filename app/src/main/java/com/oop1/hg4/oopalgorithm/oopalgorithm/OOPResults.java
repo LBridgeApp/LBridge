@@ -1,12 +1,4 @@
-package com.hg4.oopalgorithm.oopalgorithm;
-
-import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
-import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.GlucoseValue;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+package com.oop1.hg4.oopalgorithm.oopalgorithm;
 
 /* JADX INFO: Access modifiers changed from: package-private */
 /* compiled from: OOPResultsContainer.java */

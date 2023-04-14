@@ -1,4 +1,4 @@
-package com.hg4.oopalgorithm.oopalgorithm;
+package com.oop1.hg4.oopalgorithm.oopalgorithm;
 
 import android.content.Context;
 import android.util.Log;
@@ -13,8 +13,8 @@ import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessi
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingOutputs;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingResult;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.GlucoseValue;
-import com.no.bjorninge.librestate.LibreState;
-import com.no.bjorninge.librestate.LibreUsState;
+import com.oop1.no.bjorninge.librestate.LibreState;
+import com.oop1.no.bjorninge.librestate.LibreUsState;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -88,9 +88,5 @@ public class AlgorithmRunner {
             //return new OOPResults(timestamp, -3, 0, null);
             return new OOPResults(null, null);
         }
-    }
-
-    public static String getPackageCodePathNoCreate(Context context) {
-        return MyContextWrapper.getPackageCodePathNoCreate(context);
     }
 }
