@@ -1,4 +1,4 @@
-package com.oop1.hg4.oopalgorithm.oopalgorithm;
+package com.oop1;
 
 import android.content.Context;
 import android.content.ContextWrapper;

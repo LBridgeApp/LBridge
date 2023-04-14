@@ -1,4 +1,4 @@
-package com.oop1.hg4.oopalgorithm.oopalgorithm;
+package com.oop1;
 
 public enum GlucoseUnit {
     MGDL("mg/dl"){

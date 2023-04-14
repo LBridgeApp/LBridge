@@ -1,9 +1,10 @@
-package com.oop1.no.bjorninge.librestate;
+package com.oop1;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
 import android.util.Log;
+
 import java.util.Arrays;
 
 /* loaded from: classes.dex */

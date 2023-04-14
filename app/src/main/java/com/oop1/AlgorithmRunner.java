@@ -1,4 +1,4 @@
-package com.oop1.hg4.oopalgorithm.oopalgorithm;
+package com.oop1;
 
 import android.content.Context;
 import android.util.Log;
@@ -13,8 +13,6 @@ import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessi
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingOutputs;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingResult;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.GlucoseValue;
-import com.oop1.no.bjorninge.librestate.LibreState;
-import com.oop1.no.bjorninge.librestate.LibreUsState;
 
 import java.util.Arrays;
 import java.util.Objects;

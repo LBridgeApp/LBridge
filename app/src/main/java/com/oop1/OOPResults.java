@@ -1,4 +1,4 @@
-package com.oop1.hg4.oopalgorithm.oopalgorithm;
+package com.oop1;
 
 /* JADX INFO: Access modifiers changed from: package-private */
 /* compiled from: OOPResultsContainer.java */

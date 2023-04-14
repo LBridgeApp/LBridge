@@ -2,10 +2,10 @@ package com.example.nfc_libre_scan.libre;
 
 import android.content.Context;
 
-import com.oop1.hg4.oopalgorithm.oopalgorithm.AlgorithmRunner;
-import com.oop1.hg4.oopalgorithm.oopalgorithm.CurrentBg;
-import com.oop1.hg4.oopalgorithm.oopalgorithm.HistoricBg;
-import com.oop1.hg4.oopalgorithm.oopalgorithm.OOPResults;
+import com.oop1.AlgorithmRunner;
+import com.oop1.CurrentBg;
+import com.oop1.HistoricBg;
+import com.oop1.OOPResults;
 
 public class LibreMessage {
     private final PatchUID patchUID;

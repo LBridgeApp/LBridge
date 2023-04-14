@@ -13,9 +13,9 @@ import android.widget.TextView;
 
 import com.example.nfc_libre_scan.libre.Libre;
 import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.oop1.hg4.oopalgorithm.oopalgorithm.CurrentBg;
-import com.oop1.hg4.oopalgorithm.oopalgorithm.GlucoseUnit;
-import com.oop1.hg4.oopalgorithm.oopalgorithm.HistoricBg;
+import com.oop1.CurrentBg;
+import com.oop1.GlucoseUnit;
+import com.oop1.HistoricBg;
 
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
