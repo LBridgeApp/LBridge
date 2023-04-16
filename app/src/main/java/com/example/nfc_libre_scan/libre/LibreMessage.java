@@ -8,18 +8,18 @@ import com.oop1.HistoricBg;
 import com.oop1.OOPResults;
 
 public class LibreMessage {
-    private final PatchUID patchUID;
+    private final byte[] patchUID;
     private final byte[] patchInfo;
-    private final Payload payload;
+    private final byte[] payload;
 
-    public PatchUID getPatchUID() {
+    public byte[] getPatchUID() {
         return this.patchUID;
     }
     public byte[] getPatchInfo() {
         return this.patchInfo;
     }
 
-    public Payload getPayload() {
+    public byte[] getPayload() {
         return this.payload;
     }
 
@@ -43,7 +43,7 @@ public class LibreMessage {
 
     private final Context context;
 
-    LibreMessage(PatchUID patchUID, byte[] patchInfo, Payload payload, String libreSN, Context context) {
+    LibreMessage(byte[] patchUID, byte[] patchInfo, byte[] payload, String libreSN, Context context) {
         this.patchUID = patchUID;
         this.patchInfo = patchInfo;
         this.payload = payload;
@@ -53,6 +53,6 @@ public class LibreMessage {
 
     private OOPResults queryOOPResults() {
         long timestamp = System.currentTimeMillis();
-        return AlgorithmRunner.RunAlgorithm(timestamp, context, payload.getValue(), patchUID.getValue(), patchInfo, false, libreSN);
+        return AlgorithmRunner.RunAlgorithm(timestamp, context, payload, patchUID, patchInfo, false, libreSN);
     }
 }

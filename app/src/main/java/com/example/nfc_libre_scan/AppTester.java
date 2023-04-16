@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
+import com.example.nfc_libre_scan.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
 
 import java.io.IOException;
@@ -48,16 +49,17 @@ public class AppTester {
             SQLiteDatabase db = SQLiteDatabase.openDatabase(
                     activity.getDatabasePath(databaseName).getPath(),
                     null, SQLiteDatabase.OPEN_READONLY);
-            boolean a = testRawScan(db);
-            boolean b = testSensor(db);
+            boolean a = testRawScanTable(db);
+            boolean b = testSensorTable(db);
+            boolean c = testRealTimeReadingTable(db);
             db.close();
-            return a && b;
+            return a && b && c;
         } catch (IOException ignored) {
             return false;
         }
     }
 
-    private boolean testSensor(SQLiteDatabase db) throws IOException {
+    private boolean testSensorTable(SQLiteDatabase db) throws IOException {
         final long rightCRC = 2079731897;
         SensorTable sensorTable = new SensorTable(db);
         sensorTable.fillClassByValuesInLastSensorRecord();
@@ -65,12 +67,21 @@ public class AppTester {
         return calculatedCRC == rightCRC;
     }
 
-    private boolean testRawScan(SQLiteDatabase db) throws IOException {
+    private boolean testRawScanTable(SQLiteDatabase db) throws IOException {
         final long rightCRC = 1875493694;
 
-        RawScanTable rawScanTableRecord = new RawScanTable(db);
-        rawScanTableRecord.fillClassByValuesInLastRawScanRecord();
-        final long calculatedCRC = rawScanTableRecord.getComputedCRC();
+        RawScanTable rawScanTable = new RawScanTable(db);
+        rawScanTable.fillClassByValuesInLastRawScanRecord();
+        final long calculatedCRC = rawScanTable.getComputedCRC();
+        return calculatedCRC == rightCRC;
+    }
+
+    private boolean testRealTimeReadingTable(SQLiteDatabase db) throws IOException {
+        final long rightCRC = 2691565280L;
+
+        RealTimeReadingTable realTimeReadingTable = new RealTimeReadingTable(db);
+        realTimeReadingTable.fillClassByValuesInLastRealTimeReadingRecord();
+        final long calculatedCRC = realTimeReadingTable.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 }

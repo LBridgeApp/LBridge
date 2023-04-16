@@ -132,7 +132,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
 
     private void editDatabase() throws IOException {
         byte[] patchInfo = libreMessage.getPatchInfo();
-        byte[] payload = libreMessage.getPayload().getValue();
+        byte[] payload = libreMessage.getPayload();
 
         SQLiteDatabase db = SQLiteDatabase.openDatabase(activity.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
         logger.ok("database opened. Trying to write...");

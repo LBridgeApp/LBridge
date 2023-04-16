@@ -79,11 +79,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
 
     }
 
-    private void vibrate() {
-        VibrationEffect vibrationEffect = VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE);
-        vibrator.vibrate(vibrationEffect);
-    }
-
     private void showBG() {
         if (libreMessage == null) {
             return;
@@ -124,7 +119,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
     @Override
     public void onLibreMessageReceived(LibreMessage message) {
         this.libreMessage = message;
-        this.vibrate();
         this.showBG();
     }
 

@@ -18,83 +18,40 @@ import java.util.zip.CRC32;
 public class RawScanTable {
     private final OnNewRecordListener listener;
     private final SQLiteDatabase db;
-    private byte[] patchInfo;
-    private byte[] payload;
-    private int scanId;
-    private int sensorId;
-    private String timeZone;
-    private long timestampLocal;
-    private long timestampUTC;
     private Integer lastScanIdForSearch;
 
     public RawScanTable(SQLiteDatabase db) {
         this.db = db;
         this.listener = new SqliteSequence(db);
     }
-    private Object getRelatedValueForLastScanId(String fieldName) {
-        final int lastScanIdForSearch = getLastScanIdForSearch();
-        String sql = String.format("SELECT %s FROM %s WHERE %s='%s'", fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastScanIdForSearch);
-        Cursor cursor = db.rawQuery(sql, null);
-        cursor.moveToFirst();
-        Object data = null;
-        if (cursor.getType(0) == Cursor.FIELD_TYPE_INTEGER) {
-            data = cursor.getLong(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_FLOAT) {
-            data = cursor.getFloat(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_STRING) {
-            data = cursor.getString(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_BLOB) {
-            data = cursor.getBlob(0);
-        }
-        cursor.close();
-        return data;
-    }
 
-    private int getLastScanIdForSearch() {
+    private Integer getLastScanIdForSearch() {
         if(lastScanIdForSearch == null){
-            String sql = "SELECT scanId FROM rawScans ORDER BY scanId ASC LIMIT 1 OFFSET (SELECT COUNT(*) FROM rawScans)-1;";
-            Cursor cursor = db.rawQuery(sql, null);
-            if (cursor.moveToFirst()) {
-                lastScanIdForSearch = cursor.getInt(0);
-            }
-            cursor.close();
+            lastScanIdForSearch = GeneralUtils.getLastFieldValueForSearch(db, TableStrings.scanId, TableStrings.TABLE_NAME);
         }
-
         return lastScanIdForSearch;
     }
-
+    private Object getRelatedValueForLastScanId(String fieldName) {
+        final int lastScanIdForSearch = getLastScanIdForSearch();
+        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastScanIdForSearch);
+    }
     private int computeScanId() {
         return getLastScanIdForSearch() + 1;
     }
 
     private int computeSensorId() {
-        String sql = "SELECT sensorId FROM sensors ORDER BY sensorId ASC LIMIT 1 OFFSET (SELECT COUNT(*) FROM sensors)-1;";
-        Cursor cursor = db.rawQuery(sql, null);
-        int sensorId = 1;
-        if (cursor.moveToFirst()) {
-            sensorId = cursor.getInt(0);
-        }
-        cursor.close();
-        return sensorId;
+        return GeneralUtils.computeSensorId(this.db);
     }
 
     private String computeCurrentTimeZone() {
-        return TimeZone.getDefault().getID();
+        return GeneralUtils.computeCurrentTimeZone();
     }
 
     private long computeTimestampLocal() {
-        // Метод toEpochMilli не учитывает временную зону.
-        // Класс LocalDateTime не знает, какая у него временная зона.
-        // хитрость в том, что нужно локальное время записать как UTC.
-        // тогда именно локальное время будет записано в миллисекунды Unix, а не UTC!.
-        Instant utc = Instant.ofEpochMilli(this.timestampUTC);
-        LocalDateTime localDateTime = LocalDateTime.ofInstant(utc, ZoneId.systemDefault());
-        ZonedDateTime zonedDateTime = ZonedDateTime.of(localDateTime, ZoneOffset.UTC);
-        return zonedDateTime.toInstant().toEpochMilli();
+        return GeneralUtils.computeTimestampLocal(this.timestampUTC);
     }
-
     private long computeTimestampUTC() {
-        return Instant.now().toEpochMilli();
+        return GeneralUtils.computeTimestampUTC();
     }
     private long computeCRC32() throws IOException {
         CRC32 crc32 = new CRC32();
@@ -140,6 +97,14 @@ public class RawScanTable {
 
         listener.onNewRecord(TableStrings.TABLE_NAME);
     }
+
+    private byte[] patchInfo;
+    private byte[] payload;
+    private int scanId;
+    private int sensorId;
+    private String timeZone;
+    private long timestampLocal;
+    private long timestampUTC;
 
     private static class TableStrings {
         static final String TABLE_NAME = "rawScans";

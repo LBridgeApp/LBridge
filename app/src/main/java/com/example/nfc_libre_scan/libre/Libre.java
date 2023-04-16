@@ -9,7 +9,7 @@ import android.os.Bundle;
 
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.OnLibreMessageListener;
-import com.example.nfc_libre_scan.Utils;
+import com.example.nfc_libre_scan.Vibrator;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,6 +21,8 @@ public class Libre implements NfcAdapter.ReaderCallback {
     private final Activity activity;
     private final Logger logger;
     private NfcV nfcVTag;
+
+    byte[] patchUID;
     private final List<OnLibreMessageListener> listeners = new ArrayList<>();
 
     public Libre(Activity activity, Logger logger) {
@@ -51,6 +53,7 @@ public class Libre implements NfcAdapter.ReaderCallback {
     public void onTagDiscovered(Tag tag) {
         logger.inf("\n----------------\n");
         logger.ok("NfcV tag discovered");
+        Vibrator.SCAN_START.vibrate(activity);
         try (NfcV nfcVTag = NfcV.get(tag)) {
             this.nfcVTag = nfcVTag;
             if (!nfcVTag.isConnected()) {
@@ -58,21 +61,18 @@ public class Libre implements NfcAdapter.ReaderCallback {
                 logger.ok("NfcV tag connected");
             }
 
-            PatchUID patchUID = this.queryPatchUID();
+            patchUID = this.queryPatchUID();
+            String libreSN = this.decodeSerialNumber();
             byte[] patchInfo = this.queryPatchInfo();
-            Payload payload = this.queryPayload();
-            String libreSN = patchUID.decodeSerialNumber();
-
-            /*
-            byte[] patchInfo = Utils.convertByteStringToByteArray("a2 08 00 08 06 20");
-            Payload payload = new Payload(Utils.convertByteStringToByteArray("2d 2f c8 1b 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 c7 df 0d 00 9b 05 c8 90 1b 80 b0 05 c8 84 1b 80 bd 05 c8 74 1b 80 d0 05 c8 60 1b 80 da 05 c8 54 1b 80 e7 05 c8 54 1b 80 f8 05 c8 58 1b 80 09 06 c8 64 1b 80 1e 06 c8 5c 1b 80 3d 06 c8 6c 1b 80 4c 06 c8 74 1b 80 60 06 c8 54 1b 80 76 06 c8 50 1b 80 58 05 88 72 5b 80 70 05 c8 5c 1b 80 7d 05 c8 88 1b 80 3c 05 c8 4c 5f 80 26 05 c8 ac 5e 80 33 05 c8 a0 1d 80 8f 05 c8 2c 1d 80 07 06 c8 9c 5d 80 1f 06 c8 fc 1d 80 02 06 c8 58 5e 80 83 05 c8 08 5e 80 6b 04 c8 e8 5d 80 b9 03 c8 60 1d 80 36 03 c8 c0 5d 80 17 03 c8 50 5c 80 31 02 c8 84 1a 80 85 01 c8 c0 1a 80 74 01 c8 1c 1b 80 c3 01 c8 2c 1b 80 94 02 88 36 9b 80 14 03 c8 84 5b 80 43 03 c8 1c 1b 80 7f 03 c8 04 1b 80 d8 03 c8 5c 1b 80 a4 03 c8 a8 1b 80 f7 02 c8 f4 1b 80 6f 02 c8 d4 1b 80 37 02 c8 10 1c 80 3d 02 c8 fc 1b 80 87 02 c8 c4 1c 80 db 02 c8 b0 1c 80 3d 03 c8 f0 1b 80 bf 03 c8 bc 1b 80 84 04 c8 d0 1b 80 8e 05 c8 88 1b 80 ee 01 00 00 4d a7 00 08 df 0d 63 51 14 07 96 80 5a 00 ed a6 08 84 1a c8 04 34 78 65"));
-            */
+            byte[] payload = this.queryPayload();
             
             LibreMessage libreMessage = new LibreMessage(patchUID, patchInfo, payload, libreSN, activity);
             listeners.forEach(l -> l.onLibreMessageReceived(libreMessage));
+            Vibrator.SCAN_SUCCESS.vibrate(activity);
 
         } catch (Exception e) {
             logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Vibrator.SCAN_ERROR.vibrate(activity);
         } finally {
             logger.ok("NfcV tag closed");
         }
@@ -101,8 +101,8 @@ public class Libre implements NfcAdapter.ReaderCallback {
         return response;
     }
 
-    private PatchUID queryPatchUID() throws Exception {
-        return new PatchUID(nfcVTag.getTag().getId());
+    private byte[] queryPatchUID() {
+        return nfcVTag.getTag().getId();
     }
 
     private byte[] queryPatchInfo() throws Exception {
@@ -119,8 +119,8 @@ public class Libre implements NfcAdapter.ReaderCallback {
         return patchInfo;
     }
 
-    private Payload queryPayload() throws Exception {
-        byte[] data = new byte[1000];
+    private byte[] queryPayload() throws Exception {
+        byte[] payload = new byte[1000];
         //logger.inf("Getting payload...");
         final int correct_reply_size = 9;
         final int startBlock = 1;
@@ -131,10 +131,51 @@ public class Libre implements NfcAdapter.ReaderCallback {
                 oneBlock = this.runCmd(cmd);
             }
             while (oneBlock.length != correct_reply_size);
-            System.arraycopy(oneBlock, startBlock, data, i * 8, 8);
+            System.arraycopy(oneBlock, startBlock, payload, i * 8, 8);
         }
         //logger.ok("Payload retrieved.");
-        data = Arrays.copyOfRange(data, 0, Payload.payloadBytesLength);
-        return new Payload(data);
+        payload = Arrays.copyOfRange(payload, 0, Payload.payloadBytesLength);
+
+        boolean payloadIsValid = Payload.verify(payload);
+        if(!payloadIsValid){
+            throw new Exception("Payload is not valid.");
+        }
+        return payload;
+    }
+
+    private String decodeSerialNumber() {
+        byte[] serialBuffer = new byte[3 + 8];
+        System.arraycopy(patchUID, 0, serialBuffer, 3, 8);
+
+        String[] lookupTable =
+                {
+                        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                        "A", "C", "D", "E", "F", "G", "H", "J", "K", "L",
+                        "M", "N", "P", "Q", "R", "T", "U", "V", "W", "X",
+                        "Y", "Z"
+                };
+        byte[] uuidShort = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
+        int i;
+
+        for (i = 2; i < 8; i++) uuidShort[i - 2] = serialBuffer[(2 + 8) - i];
+        uuidShort[6] = 0x00;
+        uuidShort[7] = 0x00;
+
+        StringBuilder binary = new StringBuilder();
+        String binS;
+        for (i = 0; i < 8; i++) {
+            binS = String.format("%8s", Integer.toBinaryString(uuidShort[i] & 0xFF)).replace(' ', '0');
+            binary.append(binS);
+        }
+
+        StringBuilder v = new StringBuilder("0");
+        char[] pozS = {0, 0, 0, 0, 0};
+        for (i = 0; i < 10; i++) {
+            for (int k = 0; k < 5; k++) pozS[k] = binary.charAt((5 * i) + k);
+            int value = (pozS[0] - '0') * 16 + (pozS[1] - '0') * 8 + (pozS[2] - '0') * 4 + (pozS[3] - '0') * 2 + (pozS[4] - '0') * 1;
+            v.append(lookupTable[value]);
+        }
+
+        return v.toString();
     }
 }

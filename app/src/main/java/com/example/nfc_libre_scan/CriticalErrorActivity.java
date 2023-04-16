@@ -45,6 +45,8 @@ public class CriticalErrorActivity extends AppCompatActivity implements View.OnC
 
         Button restartButton = this.findViewById(R.id.restartAppButton);
         restartButton.setOnClickListener(this);
+
+        Vibrator.CRITICAL_ERROR.vibrate(this);
     }
 
     @Override

@@ -14,36 +14,16 @@ public class SensorTable {
     private final OnNewRecordListener listener;
     private Integer lastSensorIdForSearch;
 
-    private int getLastSensorIdForSearch() {
+    private Integer getLastSensorIdForSearch() {
         if(this.lastSensorIdForSearch == null){
-            final String sql = "SELECT sensorId FROM sensors ORDER BY sensorId ASC LIMIT 1 OFFSET (SELECT COUNT(*) FROM sensors)-1;";
-            Cursor cursor = db.rawQuery(sql, null);
-            if (cursor.moveToFirst()) {
-                this.lastSensorIdForSearch = cursor.getInt(0);
-            }
-            cursor.close();
+            this.lastSensorIdForSearch = GeneralUtils.getLastFieldValueForSearch(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
         }
         return lastSensorIdForSearch;
     }
 
     private Object getRelatedValueForLastSensorId(String fieldName) {
         final int lastSensorIdForSearch = getLastSensorIdForSearch();
-
-        String sql = String.format("SELECT %s FROM sensors WHERE %s='%s'", fieldName, TableStrings.sensorId, lastSensorIdForSearch);
-        Cursor cursor = db.rawQuery(sql, null);
-        cursor.moveToFirst();
-        Object data = null;
-        if (cursor.getType(0) == Cursor.FIELD_TYPE_INTEGER) {
-            data = cursor.getLong(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_FLOAT) {
-            data = cursor.getFloat(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_STRING) {
-            data = cursor.getString(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_BLOB) {
-            data = cursor.getBlob(0);
-        }
-        cursor.close();
-        return data;
+        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastSensorIdForSearch);
     }
 
     public long getComputedCRC() throws IOException { return computeCRC32(); }
@@ -243,6 +223,7 @@ public class SensorTable {
     }
 
     private static class TableStrings {
+        final static String TABLE_NAME = "sensors";
         final static String attenuationState = "attenuationState";
         final static String bleAddress = "bleAddress";
         final static String compositeState = "compositeState";

@@ -3,20 +3,11 @@ package com.example.nfc_libre_scan.libre;
 import java.util.Arrays;
 
 public class Payload {
-    private final byte[] payload;
 
-    Payload(byte[] payload) throws Exception {
-        this.payload = payload;
-        if(!this.verify()){
-            throw new Exception("Payload is not valid.");
-        }
-    }
+    private Payload(){}
+    public static final int payloadBytesLength = 344;
 
-    public byte[] getValue() {
-        return this.payload;
-    }
-
-    private boolean verify(){
+    public static boolean verify(byte[] payload){
         // Continue for libre1,2 checks
         if (payload.length < payloadBytesLength) {
             //logger.error("Must have at least 344 bytes for libre data");
@@ -29,12 +20,12 @@ public class Payload {
         return checksum_ok;
     }
 
-    private boolean checkCRC16(byte[] data, int start, int size) {
+    private static boolean checkCRC16(byte[] data, int start, int size) {
         long crc = computeCRC16(data, start, size);
         return crc == ((data[start + 1] & 0xFF) * 256 + (data[start] & 0xff));
     }
 
-    private long computeCRC16(byte[] data, int start, int size) {
+    private static long computeCRC16(byte[] data, int start, int size) {
         long crc = 0xffff;
         for (int i = start + 2; i < start + size; i++) {
             crc = ((crc >> 8) ^ crc16table[(int) (crc ^ (data[i] & 0xFF)) & 0xff]);
@@ -48,9 +39,7 @@ public class Payload {
         return reverseCrc;
     }
 
-    public static final int payloadBytesLength = 344;
-
-    private final long[] crc16table = {
+    private static final long[] crc16table = {
             0, 4489, 8978, 12955, 17956, 22445, 25910, 29887, 35912,
             40385, 44890, 48851, 51820, 56293, 59774, 63735, 4225, 264,
             13203, 8730, 22181, 18220, 30135, 25662, 40137, 36160, 49115,
