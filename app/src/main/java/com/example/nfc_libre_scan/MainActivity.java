@@ -26,7 +26,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
     private TextView currentBgView;
     private TextView bgHistoryView;
     private Logger logger;
-    private Vibrator vibrator;
     private LibreMessage libreMessage;
     private GlucoseUnit glucoseUnit = GlucoseUnit.MMOL;
 
@@ -47,8 +46,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
             logger.error("Tests failed! Exiting.");
             return;
         }
-
-        vibrator = ContextCompat.getSystemService(this, Vibrator.class);
 
         Libre libre = new Libre(this, logger);
         libre.listenSensor();

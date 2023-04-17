@@ -1,28 +1,21 @@
 package com.example.nfc_libre_scan.librelink_sas_db;
 
 import android.content.ContentValues;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.TimeZone;
 import java.util.zip.CRC32;
 
 public class RawScanTable {
-    private final OnNewRecordListener listener;
+    private final SqliteSequence sqlseq;
     private final SQLiteDatabase db;
     private Integer lastScanIdForSearch;
 
     public RawScanTable(SQLiteDatabase db) {
         this.db = db;
-        this.listener = new SqliteSequence(db);
+        this.sqlseq = new SqliteSequence(db);
     }
 
     private Integer getLastScanIdForSearch() {
@@ -43,7 +36,7 @@ public class RawScanTable {
         return GeneralUtils.computeSensorId(this.db);
     }
 
-    private String computeCurrentTimeZone() {
+    private String computeTimeZone() {
         return GeneralUtils.computeCurrentTimeZone();
     }
 
@@ -79,7 +72,7 @@ public class RawScanTable {
         this.payload = payload;
         this.scanId = computeScanId();
         this.sensorId = computeSensorId();
-        this.timeZone = computeCurrentTimeZone();
+        this.timeZone = computeTimeZone();
         this.timestampUTC = computeTimestampUTC();
         this.timestampLocal = computeTimestampLocal();
         long computedCRC = computeCRC32();
@@ -93,9 +86,9 @@ public class RawScanTable {
         values.put(TableStrings.timestampLocal, timestampLocal);
         values.put(TableStrings.timestampUTC, timestampUTC);
         values.put(TableStrings.CRC, computedCRC);
-        db.insert(TableStrings.TABLE_NAME, null, values);
 
-        listener.onNewRecord(TableStrings.TABLE_NAME);
+        db.insert(TableStrings.TABLE_NAME, null, values);
+        sqlseq.onNewRecord(TableStrings.TABLE_NAME);
     }
 
     private byte[] patchInfo;

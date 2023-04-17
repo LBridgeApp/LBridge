@@ -3,7 +3,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-public class SqliteSequence implements OnNewRecordListener {
+public class SqliteSequence {
 
     private final SQLiteDatabase db;
 
@@ -11,14 +11,13 @@ public class SqliteSequence implements OnNewRecordListener {
         this.db = db;
     }
 
-    @Override
     public void onNewRecord(String tableName) {
         int newValue = countStringsInTable(tableName) + 1;
         updateValueInSqliteSequenceTable(tableName, newValue);
     }
 
     private void updateValueInSqliteSequenceTable(String tableName, int newValue) {
-        String sql = String.format("UPDATE sqlite_sequence SET seq = %s WHERE name='%s';", tableName, newValue);
+        String sql = String.format("UPDATE sqlite_sequence SET seq = %s WHERE name='%s';", newValue, tableName);
         db.execSQL(sql);
     }
 

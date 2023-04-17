@@ -3,6 +3,7 @@ package com.example.nfc_libre_scan;
 import android.app.Activity;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.example.nfc_libre_scan.librelink_sas_db.HistoricReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
@@ -52,8 +53,9 @@ public class AppTester {
             boolean a = testRawScanTable(db);
             boolean b = testSensorTable(db);
             boolean c = testRealTimeReadingTable(db);
+            boolean d = testHistoricReadingTable(db);
             db.close();
-            return a && b && c;
+            return a && b && c && d;
         } catch (IOException ignored) {
             return false;
         }
@@ -82,6 +84,15 @@ public class AppTester {
         RealTimeReadingTable realTimeReadingTable = new RealTimeReadingTable(db);
         realTimeReadingTable.fillClassByValuesInLastRealTimeReadingRecord();
         final long calculatedCRC = realTimeReadingTable.getComputedCRC();
+        return calculatedCRC == rightCRC;
+    }
+
+    private boolean testHistoricReadingTable(SQLiteDatabase db) throws IOException {
+        final long rightCRC = 3219851232L;
+
+        HistoricReadingTable historicReadingTable = new HistoricReadingTable(db);
+        historicReadingTable.fillClassByValuesInLastHistoricReadingRecord();
+        final long calculatedCRC = historicReadingTable.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 }
