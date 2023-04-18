@@ -25,7 +25,7 @@ public enum TrendArrow {
         throw new IllegalArgumentException();
     }
 
-    private int toValue() {
+    public int toValue() {
         return this.value;
     }
 }

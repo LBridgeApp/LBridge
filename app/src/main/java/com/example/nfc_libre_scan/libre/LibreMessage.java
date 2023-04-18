@@ -12,6 +12,8 @@ public class LibreMessage {
     private final byte[] patchInfo;
     private final byte[] payload;
 
+    private boolean isLocked = false;
+
     public byte[] getPatchUID() {
         return this.patchUID;
     }
@@ -32,6 +34,12 @@ public class LibreMessage {
         }
         return oopResults;
     }
+
+    public void lockForSending(){
+        this.isLocked = true;
+    };
+
+    public boolean isLockedForSending(){ return this.isLocked; }
 
     public CurrentBg getCurrentBgObject() {
         return getOopResults().getCurrentBgObject();

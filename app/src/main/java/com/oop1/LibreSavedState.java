@@ -1,14 +1,14 @@
 package com.oop1;
 
 /* loaded from: classes.dex */
-public class LibreUsState {
+public class LibreSavedState {
     public byte[] attenuationState;
     public byte[] compositeState;
 
     public String toS() {
         String s;
         String s2;
-        String s3 = new String() + "{compositeState = ";
+        String s3 = "" + "{compositeState = ";
         if (this.compositeState == null) {
             s = s3 + "null ";
         } else {

@@ -3,8 +3,11 @@ package com.oop1;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.TimeZone;
 
 public class CurrentBg {
     final long scanUnixTimestamp;
@@ -12,13 +15,17 @@ public class CurrentBg {
     final int currentSensorTime;
     final TrendArrow currentTrend;
     final GlucoseUnit glucoseUnit;
+    final byte[] patchInfo;
+    final byte[] payload;
 
-    public CurrentBg(long scanUnixTimestamp, double currentBg, int currentSensorTime, TrendArrow currentTrend, GlucoseUnit glucoseUnit) {
+    public CurrentBg(long scanUnixTimestamp, double currentBg, int currentSensorTime, TrendArrow currentTrend, GlucoseUnit glucoseUnit, byte[] patchInfo, byte[] payload) {
         this.scanUnixTimestamp = scanUnixTimestamp;
         this.bg = currentBg;
         this.currentSensorTime = currentSensorTime;
         this.currentTrend = currentTrend;
         this.glucoseUnit = glucoseUnit;
+        this.patchInfo = patchInfo;
+        this.payload = payload;
     }
 
     public TrendArrow getCurrentTrend() {
@@ -29,16 +36,25 @@ public class CurrentBg {
         return bg;
     }
 
-    public CurrentBg convertBG(GlucoseUnit unitToConvert) {
-        return new CurrentBg(scanUnixTimestamp, unitToConvert.convertFrom(bg, this.glucoseUnit), currentSensorTime, currentTrend, unitToConvert);
+    public int getSampleNumber() {
+        // sampleNumber - это так поле называется в базе данных LibreLink
+        return this.currentSensorTime;
     }
 
-    public long getSensorTimeAsUnix(){
+    public CurrentBg convertBG(GlucoseUnit unitToConvert) {
+        return new CurrentBg(scanUnixTimestamp, unitToConvert.convertFrom(bg, this.glucoseUnit), currentSensorTime, currentTrend, unitToConvert, patchInfo, payload);
+    }
+
+    public long getTimestampUTC(){
         return this.scanUnixTimestamp;
     }
 
-    public int getCurrentSensorTime() {
-        return this.currentSensorTime;
+    public long getTimestampLocal() {
+        return Utils.getUtcTimestampAsLocal(scanUnixTimestamp);
+    }
+
+    public String getTimeZone() {
+        return TimeZone.getDefault().getID();
     }
 
     public ZonedDateTime getSensorTimeAsUTC(){
@@ -55,5 +71,13 @@ public class CurrentBg {
 
     public GlucoseUnit getGlucoseUnit() {
         return glucoseUnit;
+    }
+
+    public byte[] getPatchInfo(){
+        return this.patchInfo;
+    }
+
+    public byte[] getPayload(){
+        return this.payload;
     }
 }

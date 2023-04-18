@@ -21,8 +21,8 @@ import java.util.Objects;
 public class AlgorithmRunner {
     static final String TAG = "xOOPAlgorithm";
 
-    public static OOPResults RunAlgorithm(long timestamp, Context context, byte[] packet, byte[] patchUid, byte[] patchInfo, boolean usedefaultstatealways, String sensorid) {
-        LibreUsState libreUsState;
+    public static OOPResults RunAlgorithm(long timestamp, Context context, byte[] payload, byte[] patchUid, byte[] patchInfo, boolean usedefaultstatealways, String sensorid) {
+        LibreSavedState libreSavedState;
         DataProcessingNative data_processing_native = new DataProcessingNative(1095774808);
         MyContextWrapper my_context_wrapper = new MyContextWrapper(context);
         data_processing_native.initialize(my_context_wrapper);
@@ -38,15 +38,15 @@ public class AlgorithmRunner {
         int sensorScanTimestamp = 309060784 + 36000;
         if (usedefaultstatealways) {
             Log.d(TAG, "dabear: using default oldstate");
-            libreUsState = LibreState.getDefaultState();
+            libreSavedState = LibreState.getDefaultState();
         } else {
             Log.d(TAG, "dabear:  getting state from persistent storage:");
-            libreUsState = LibreState.getStateForSensor(sensorid, context);
+            libreSavedState = LibreState.getStateForSensor(sensorid, context);
         }
-        Log.d(TAG, "libreUsState is now :" + libreUsState.toS());
+        Log.d(TAG, "libreUsState is now :" + libreSavedState.toS());
         AttenuationConfiguration attenuationConfiguration = new AttenuationConfiguration(20160, true, true, true, true);
         try {
-            DataProcessingOutputs data_processing_outputs = data_processing_native.processScan(alarm_configuration, non_actionable_configuration, attenuationConfiguration, patchUid, patchInfo, packet, 309060784, sensorScanTimestamp, 60, 20160, -21600000, libreUsState.compositeState, libreUsState.attenuationState);
+            DataProcessingOutputs data_processing_outputs = data_processing_native.processScan(alarm_configuration, non_actionable_configuration, attenuationConfiguration, patchUid, patchInfo, payload, 309060784, sensorScanTimestamp, 60, 20160, -21600000, libreSavedState.compositeState, libreSavedState.attenuationState);
             Log.d(TAG, "data_processing_native.processScan returned successfully " + data_processing_outputs);
             Log.d(TAG, "data_processing_native.processScan returned successfully bg = " + data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getValue() + " id = " + data_processing_outputs.getAlgorithmResults().getRealTimeGlucose().getId());
             if (sensorid != null) {
@@ -58,7 +58,7 @@ public class AlgorithmRunner {
             int currentSensorTime = algorithmResults.getRealTimeGlucose().getId();
             TrendArrow trendArrow = algorithmResults.getTrendArrow();
 
-            CurrentBg currentBg = new CurrentBg(timestamp, realTimeGlucose, currentSensorTime, trendArrow, GlucoseUnit.MGDL);
+            CurrentBg currentBg = new CurrentBg(timestamp, realTimeGlucose, currentSensorTime, trendArrow, GlucoseUnit.MGDL, patchInfo, payload);
 
             GlucoseValue[] glucoseValues = data_processing_outputs.getAlgorithmResults().getHistoricGlucose().toArray(new GlucoseValue[0]);
             HistoricBg[] historicBgs = new HistoricBg[glucoseValues.length];

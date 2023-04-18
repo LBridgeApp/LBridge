@@ -88,12 +88,13 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         try {
             currentBgObject = libreMessage.getCurrentBgObject().convertBG(this.glucoseUnit);
             double currentBG = currentBgObject.getBG();
+            String trend = currentBgObject.getCurrentTrend().toString();
             String glucoseUnit = currentBgObject.getGlucoseUnit().getString();
             historicBgArray = libreMessage.getHistoricBgArray();
 
             String localTime = currentBgObject.getSensorTimeAsLocalTime().format(dtf);
 
-            String textString = String.format(Locale.US, "Time: %s, Current BG: %.1f %s", localTime, currentBG, glucoseUnit);
+            String textString = String.format(Locale.US, "Time: %s\nCurrent BG: %.1f %s\nTrend: %s", localTime, currentBG, glucoseUnit, trend);
             this.runOnUiThread(() -> this.currentBgView.setText(textString));
 
             StringBuilder historicBgBuilder = new StringBuilder();

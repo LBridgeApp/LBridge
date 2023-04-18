@@ -1,37 +1,71 @@
 package com.example.nfc_libre_scan.librelink_sas_db;
 
-import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
+
+import com.oop1.CurrentBg;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
 public class SensorTable {
 
     private final SQLiteDatabase db;
-    private final OnNewRecordListener listener;
-    private Integer lastSensorIdForSearch;
+    private final CurrentBg currentBg;
+    private Integer lastStoredSensorId;
 
-    private Integer getLastSensorIdForSearch() {
-        if(this.lastSensorIdForSearch == null){
-            this.lastSensorIdForSearch = GeneralUtils.getLastFieldValueForSearch(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
+    public SensorTable(SQLiteDatabase db, CurrentBg currentBg) throws Exception {
+        this.db = db;
+        this.currentBg = currentBg;
+        if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+            throw new Exception("Table is null");
         }
-        return lastSensorIdForSearch;
+    }
+
+    public boolean isSensorWritable(){
+        long diffMillis = currentBg.getTimestampUTC() - this.getSensorStartTimestampUTC();
+        long diffDays = TimeUnit.DAYS.convert(diffMillis, TimeUnit.MILLISECONDS);
+        return diffDays < 14;
+    }
+
+    private Integer getLastStoredSensorId() {
+        if (this.lastStoredSensorId == null) {
+            this.lastStoredSensorId = GeneralUtils.getLastStoredFieldValue(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
+        }
+        return lastStoredSensorId;
     }
 
     private Object getRelatedValueForLastSensorId(String fieldName) {
-        final int lastSensorIdForSearch = getLastSensorIdForSearch();
-        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastSensorIdForSearch);
+        final int lastStoredSensorId = getLastStoredSensorId();
+        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
     }
 
-    public long getComputedCRC() throws IOException { return computeCRC32(); }
+    public void updateToLastScan() throws IOException {
+        this.fillClassByValuesInLastSensorRecord();
+        this.lastScanSampleNumber = currentBg.getSampleNumber();
+        this.lastScanTimeZone = currentBg.getTimeZone();
+        this.lastScanTimestampLocal = currentBg.getTimestampLocal();
+        this.lastScanTimestampUTC = currentBg.getTimestampUTC();
+        final long computedCRC = this.computeCRC32();
 
-    public SensorTable(SQLiteDatabase db) {
-        this.db = db;
-        this.listener = new SqliteSequence(db);
+        final String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=%s WHERE %s=%s;",
+                TableStrings.TABLE_NAME,
+                TableStrings.lastScanSampleNumber, lastScanSampleNumber,
+                TableStrings.lastScanTimeZone, DatabaseUtils.sqlEscapeString(lastScanTimeZone),
+                TableStrings.lastScanTimestampLocal, lastScanTimestampLocal,
+                TableStrings.lastScanTimestampUTC, lastScanTimestampUTC,
+                TableStrings.CRC, computedCRC,
+                TableStrings.sensorId, this.sensorId);
+        db.execSQL(sql);
     }
+
+    public long getComputedCRC() throws IOException {
+        return computeCRC32();
+    }
+
     private byte[] attenuationState;
     private byte[] bleAddress;
     private byte[] compositeState;

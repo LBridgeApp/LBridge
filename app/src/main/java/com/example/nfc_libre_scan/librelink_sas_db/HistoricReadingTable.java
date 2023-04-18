@@ -3,43 +3,39 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.oop1.GlucoseUnit;
+import com.oop1.HistoricBg;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.zip.CRC32;
 
 public class HistoricReadingTable {
     private final SQLiteDatabase db;
-
+    private final HistoricBg[] historicBgs;
     private final SqliteSequence sqlseq;
-    private Integer lastReadingIdForSearch;
+    private Integer lastStoredReadingId;
 
-    public HistoricReadingTable(SQLiteDatabase db){
+    public HistoricReadingTable(SQLiteDatabase db, HistoricBg[] historicBgs) throws Exception {
         this.db = db;
+        this.historicBgs = historicBgs;
         this.sqlseq = new SqliteSequence(db);
+        if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+            throw new Exception("Table is null");
+        }
     }
 
-    private Integer getLastReadingIdForSearch() {
-        if(lastReadingIdForSearch == null){
-            lastReadingIdForSearch = GeneralUtils.getLastFieldValueForSearch(db, TableStrings.readingId, TableStrings.TABLE_NAME);
+    private Integer getLastStoredReadingId() {
+        if(lastStoredReadingId == null){
+            lastStoredReadingId = GeneralUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
         }
-        return lastReadingIdForSearch;
+        return lastStoredReadingId;
     }
     private Object getRelatedValueForLastReadingId(String fieldName) {
-        final int lastReadingIdForSearch = getLastReadingIdForSearch();
-        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastReadingIdForSearch);
-    }
-
-    private String computeTimeZone() {
-        return GeneralUtils.computeCurrentTimeZone();
-    }
-
-    private long computeTimestampLocal() {
-        return GeneralUtils.computeTimestampLocal(this.timestampUTC);
-    }
-
-    private long computeTimestampUTC() {
-        return GeneralUtils.computeTimestampUTC();
+        final int lastStoredReadingId = getLastStoredReadingId();
+        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
     public long getComputedCRC() throws IOException { return computeCRC32(); }
@@ -62,16 +58,28 @@ public class HistoricReadingTable {
         return crc32.getValue();
     }
 
-    public void addNewRecord() throws IOException {
-        this.glucoseValue = computeGlucoseValue();
-        this.readingId = computeReadingId();
-        this.sampleNumber = computeSampleNumber();
-        this.sensorId = computeSensorId();
-        this.timeChangeBefore = computeTimeChangeBefore();
-        this.timeZone = computeTimeZone();
-        this.timestampLocal = computeTimestampLocal();
-        this.timestampUTC = computeTimestampUTC();
-        long computedCRC = computeCRC32();
+    public void addLastSensorScan() throws IOException {
+        int lastStoredSampleNumber = this.getSampleNumber();
+        int lastStoredReadingId = this.getReadingId();
+        HistoricBg[] missingHistoricBgs = Arrays.stream(historicBgs)
+                .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
+                .toArray(HistoricBg[]::new);
+
+        for (HistoricBg missedHistoricBg : missingHistoricBgs){
+            this.addNewRecord(missedHistoricBg, ++lastStoredReadingId);
+        }
+    }
+
+    private void addNewRecord(HistoricBg historicBg, int readingId) throws IOException {
+        this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
+        this.readingId = readingId;
+        this.sampleNumber = historicBg.getSampleNumber();
+        this.sensorId = GeneralUtils.computeSensorId(this.db);
+        this.timeChangeBefore = 0;
+        this.timeZone = historicBg.getTimeZone();
+        this.timestampLocal = historicBg.getTimestampLocal();
+        this.timestampUTC = historicBg.getTimestampUTC();
+        long computedCRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();
         values.put(TableStrings.glucoseValue, glucoseValue);
@@ -84,7 +92,7 @@ public class HistoricReadingTable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insert(TableStrings.TABLE_NAME, null, values);
-        sqlseq.onNewRecord(TableStrings.TABLE_NAME);
+        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
     }
     private double glucoseValue;
     private int readingId;

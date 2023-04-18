@@ -56,41 +56,41 @@ public class AppTester {
             boolean d = testHistoricReadingTable(db);
             db.close();
             return a && b && c && d;
-        } catch (IOException ignored) {
+        } catch (Exception ignored) {
             return false;
         }
     }
 
-    private boolean testSensorTable(SQLiteDatabase db) throws IOException {
+    private boolean testSensorTable(SQLiteDatabase db) throws Exception {
         final long rightCRC = 2079731897;
-        SensorTable sensorTable = new SensorTable(db);
+        SensorTable sensorTable = new SensorTable(db, null);
         sensorTable.fillClassByValuesInLastSensorRecord();
         final long calculatedCRC = sensorTable.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 
-    private boolean testRawScanTable(SQLiteDatabase db) throws IOException {
+    private boolean testRawScanTable(SQLiteDatabase db) throws Exception {
         final long rightCRC = 1875493694;
 
-        RawScanTable rawScanTable = new RawScanTable(db);
+        RawScanTable rawScanTable = new RawScanTable(db, null);
         rawScanTable.fillClassByValuesInLastRawScanRecord();
         final long calculatedCRC = rawScanTable.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 
-    private boolean testRealTimeReadingTable(SQLiteDatabase db) throws IOException {
+    private boolean testRealTimeReadingTable(SQLiteDatabase db) throws Exception {
         final long rightCRC = 2691565280L;
 
-        RealTimeReadingTable realTimeReadingTable = new RealTimeReadingTable(db);
+        RealTimeReadingTable realTimeReadingTable = new RealTimeReadingTable(db, null);
         realTimeReadingTable.fillClassByValuesInLastRealTimeReadingRecord();
         final long calculatedCRC = realTimeReadingTable.getComputedCRC();
         return calculatedCRC == rightCRC;
     }
 
-    private boolean testHistoricReadingTable(SQLiteDatabase db) throws IOException {
+    private boolean testHistoricReadingTable(SQLiteDatabase db) throws Exception {
         final long rightCRC = 3219851232L;
 
-        HistoricReadingTable historicReadingTable = new HistoricReadingTable(db);
+        HistoricReadingTable historicReadingTable = new HistoricReadingTable(db, null);
         historicReadingTable.fillClassByValuesInLastHistoricReadingRecord();
         final long calculatedCRC = historicReadingTable.getComputedCRC();
         return calculatedCRC == rightCRC;

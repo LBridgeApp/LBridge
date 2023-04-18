@@ -10,10 +10,15 @@ import android.view.View;
 
 import com.example.nfc_libre_scan.libre.Libre;
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink_sas_db.HistoricReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
+import com.example.nfc_libre_scan.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
+import com.oop1.CurrentBg;
+import com.oop1.HistoricBg;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
 
@@ -60,12 +65,18 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             return;
         }
 
+        if (libreMessage.isLockedForSending()) {
+            logger.error("That libre message already has been sent to libreview.");
+            return;
+        }
+
         killLibreLink();
         try {
             rootLib.copyFile(Consts.librelink_sas_db_path, ourDbPath);
             logger.ok("db to our app copied");
         } catch (IOException e) {
             logger.error("Failed to copy db to our app");
+            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
 
@@ -74,14 +85,17 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             logger.ok("Permission 666 set to db in our app");
         } catch (IOException e) {
             logger.error("Failed to set 666 permission to db in our app");
+            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
 
         try {
             editDatabase();
-            logger.ok("db edited");
-        } catch (IOException e) {
+            logger.ok("database edited.");
+            libreMessage.lockForSending();
+        } catch (Exception e) {
             logger.error("Failed to edit db in our app");
+            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
 
@@ -90,6 +104,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             logger.ok("edited db to librelink app copied!");
         } catch (IOException e) {
             logger.error("Failed to copy db to librelink app");
+            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
 
@@ -98,6 +113,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             logger.ok("permission 660 set to db in librelink app");
         } catch (IOException e) {
             logger.error("Failed to set 660 permission to db in librelink app");
+            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
         startLibreLink();
@@ -130,18 +146,44 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         logger.ok("LibreLink killed");
     }
 
-    private void editDatabase() throws IOException {
-        byte[] patchInfo = libreMessage.getPatchInfo();
-        byte[] payload = libreMessage.getPayload();
+    private void editDatabase() throws Exception {
+        CurrentBg currentBg = libreMessage.getCurrentBgObject();
+        HistoricBg[] historicBgs = libreMessage.getHistoricBgArray();
 
         SQLiteDatabase db = SQLiteDatabase.openDatabase(activity.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
         logger.ok("database opened. Trying to write...");
 
-        RawScanTable rawScanTable = new RawScanTable(db);
-        SensorTable sensorTable = new SensorTable(db);
+        RawScanTable rawScanTable;
+        SensorTable sensorTable;
+        RealTimeReadingTable realTimeReadingTable;
+        HistoricReadingTable historicReadingTable;
+        try {
+            rawScanTable = new RawScanTable(db, currentBg);
+            sensorTable = new SensorTable(db, currentBg);
+            realTimeReadingTable = new RealTimeReadingTable(db, currentBg);
+            historicReadingTable = new HistoricReadingTable(db, historicBgs);
+        } catch (Exception ignored) {
+            throw new Exception("Scan the sensor in LibreLink until glucose appears.");
+        }
 
-        rawScanTable.addNewRecord(patchInfo, payload);
-        logger.ok("RawScan record done.");
+        if (!sensorTable.isSensorWritable()) {
+            throw new Exception("Sensor has expired. You need to:\n" +
+                    "1) Install a new one or restart old;\n" +
+                    "2) Clear the LibreLink database;\n" +
+                    "3) Scan the sensor in LibreLink until glucose appears.");
+        }
+
+        db.beginTransaction();
+
+        sensorTable.updateToLastScan();
+        rawScanTable.addNewSensorScan();
+        realTimeReadingTable.addLastSensorScan();
+        historicReadingTable.addLastSensorScan();
+
+        db.setTransactionSuccessful();
+        db.endTransaction();
+
+        logger.ok("Records done.");
 
         db.close();
         logger.ok("database closed");

@@ -3,6 +3,8 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.oop1.CurrentBg;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -11,40 +13,27 @@ import java.util.zip.CRC32;
 public class RawScanTable {
     private final SqliteSequence sqlseq;
     private final SQLiteDatabase db;
-    private Integer lastScanIdForSearch;
+    private final CurrentBg currentBg;
+    private Integer lastStoredScanId;
 
-    public RawScanTable(SQLiteDatabase db) {
+    public RawScanTable(SQLiteDatabase db, CurrentBg currentBg) throws Exception {
         this.db = db;
+        this.currentBg = currentBg;
         this.sqlseq = new SqliteSequence(db);
+        if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+            throw new Exception("Table is null");
+        }
     }
 
-    private Integer getLastScanIdForSearch() {
-        if(lastScanIdForSearch == null){
-            lastScanIdForSearch = GeneralUtils.getLastFieldValueForSearch(db, TableStrings.scanId, TableStrings.TABLE_NAME);
+    private Integer getLastStoredScanId() {
+        if(lastStoredScanId == null){
+            lastStoredScanId = GeneralUtils.getLastStoredFieldValue(db, TableStrings.scanId, TableStrings.TABLE_NAME);
         }
-        return lastScanIdForSearch;
+        return lastStoredScanId;
     }
     private Object getRelatedValueForLastScanId(String fieldName) {
-        final int lastScanIdForSearch = getLastScanIdForSearch();
-        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastScanIdForSearch);
-    }
-    private int computeScanId() {
-        return getLastScanIdForSearch() + 1;
-    }
-
-    private int computeSensorId() {
-        return GeneralUtils.computeSensorId(this.db);
-    }
-
-    private String computeTimeZone() {
-        return GeneralUtils.computeCurrentTimeZone();
-    }
-
-    private long computeTimestampLocal() {
-        return GeneralUtils.computeTimestampLocal(this.timestampUTC);
-    }
-    private long computeTimestampUTC() {
-        return GeneralUtils.computeTimestampUTC();
+        final int lastStoredScanId = getLastStoredScanId();
+        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastStoredScanId);
     }
     private long computeCRC32() throws IOException {
         CRC32 crc32 = new CRC32();
@@ -67,15 +56,15 @@ public class RawScanTable {
         return computeCRC32();
     }
 
-    public void addNewRecord(byte[] patchInfo, byte[] payload) throws IOException {
-        this.patchInfo = patchInfo;
-        this.payload = payload;
-        this.scanId = computeScanId();
-        this.sensorId = computeSensorId();
-        this.timeZone = computeTimeZone();
-        this.timestampUTC = computeTimestampUTC();
-        this.timestampLocal = computeTimestampLocal();
-        long computedCRC = computeCRC32();
+    public void addNewSensorScan() throws IOException {
+        this.patchInfo = currentBg.getPatchInfo();
+        this.payload = currentBg.getPayload();
+        this.scanId = getLastStoredScanId() + 1;
+        this.sensorId = GeneralUtils.computeSensorId(this.db);
+        this.timeZone = currentBg.getTimeZone();
+        this.timestampUTC = currentBg.getTimestampUTC();
+        this.timestampLocal = currentBg.getTimestampLocal();
+        long computedCRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();
         values.put(TableStrings.patchInfo, patchInfo);
@@ -88,7 +77,7 @@ public class RawScanTable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insert(TableStrings.TABLE_NAME, null, values);
-        sqlseq.onNewRecord(TableStrings.TABLE_NAME);
+        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
     }
 
     private byte[] patchInfo;
