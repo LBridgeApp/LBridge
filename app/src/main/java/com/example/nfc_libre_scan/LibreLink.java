@@ -166,7 +166,8 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             throw new Exception("Scan the sensor in LibreLink until glucose appears.");
         }
 
-        if (!sensorTable.isSensorWritable()) {
+        // TODO: нужно так же сделать с новейшим.
+        if (sensorTable.isSensorExpired()) {
             throw new Exception("Sensor has expired. You need to:\n" +
                     "1) Install a new one or restart old;\n" +
                     "2) Clear the LibreLink database;\n" +

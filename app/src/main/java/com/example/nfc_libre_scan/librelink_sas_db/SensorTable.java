@@ -25,10 +25,10 @@ public class SensorTable {
         }
     }
 
-    public boolean isSensorWritable(){
+    public boolean isSensorExpired(){
         long diffMillis = currentBg.getTimestampUTC() - this.getSensorStartTimestampUTC();
         long diffDays = TimeUnit.DAYS.convert(diffMillis, TimeUnit.MILLISECONDS);
-        return diffDays < 14;
+        return diffDays >= 14;
     }
 
     private Integer getLastStoredSensorId() {
