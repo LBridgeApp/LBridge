@@ -3,6 +3,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.CurrentBg;
 
 import java.io.ByteArrayOutputStream;
@@ -14,19 +15,20 @@ import java.util.zip.CRC32;
 public class SensorTable {
 
     private final SQLiteDatabase db;
-    private final CurrentBg currentBg;
+
+    private final LibreMessage libreMessage;
     private Integer lastStoredSensorId;
 
-    public SensorTable(SQLiteDatabase db, CurrentBg currentBg) throws Exception {
+    public SensorTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
-        this.currentBg = currentBg;
+        this.libreMessage = libreMessage;
         if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
             throw new Exception("Table is null");
         }
     }
 
     public boolean isSensorExpired(){
-        long diffMillis = currentBg.getTimestampUTC() - this.getSensorStartTimestampUTC();
+        long diffMillis = libreMessage.getCurrentBgObject().getTimestampUTC() - this.getSensorStartTimestampUTC();
         long diffDays = TimeUnit.DAYS.convert(diffMillis, TimeUnit.MILLISECONDS);
         return diffDays >= 14;
     }
@@ -45,10 +47,10 @@ public class SensorTable {
 
     public void updateToLastScan() throws IOException {
         this.fillClassByValuesInLastSensorRecord();
-        this.lastScanSampleNumber = currentBg.getSampleNumber();
-        this.lastScanTimeZone = currentBg.getTimeZone();
-        this.lastScanTimestampLocal = currentBg.getTimestampLocal();
-        this.lastScanTimestampUTC = currentBg.getTimestampUTC();
+        this.lastScanSampleNumber = libreMessage.getCurrentBgObject().getSampleNumber();
+        this.lastScanTimeZone = libreMessage.getCurrentBgObject().getTimeZone();
+        this.lastScanTimestampLocal = libreMessage.getCurrentBgObject().getTimestampLocal();
+        this.lastScanTimestampUTC = libreMessage.getCurrentBgObject().getTimestampUTC();
         final long computedCRC = this.computeCRC32();
 
         final String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=%s WHERE %s=%s;",

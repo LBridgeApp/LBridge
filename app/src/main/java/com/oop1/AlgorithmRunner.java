@@ -30,8 +30,7 @@ public class AlgorithmRunner {
         boolean bret = data_processing_native.isPatchSupported(bDat, ApplicationRegion.LEVEL_2);
         Log.d(TAG, "data_processing_native.isPatchSupported11 returned " + bret);
         if (!bret) {
-            //return new OOPResults(timestamp, -1, 0, null);
-            return new OOPResults(null, null);
+            return null;
         }
         AlarmConfiguration alarm_configuration = new AlarmConfiguration(70, 240);
         NonActionableConfiguration non_actionable_configuration = new NonActionableConfiguration(false, true, 720, 70, 500, -2.0d, 2.0d);
@@ -58,7 +57,7 @@ public class AlgorithmRunner {
             int currentSensorTime = algorithmResults.getRealTimeGlucose().getId();
             TrendArrow trendArrow = algorithmResults.getTrendArrow();
 
-            CurrentBg currentBg = new CurrentBg(timestamp, realTimeGlucose, currentSensorTime, trendArrow, GlucoseUnit.MGDL, patchInfo, payload);
+            CurrentBg currentBg = new CurrentBg(timestamp, realTimeGlucose, currentSensorTime, trendArrow, GlucoseUnit.MGDL);
 
             GlucoseValue[] glucoseValues = data_processing_outputs.getAlgorithmResults().getHistoricGlucose().toArray(new GlucoseValue[0]);
             HistoricBg[] historicBgs = new HistoricBg[glucoseValues.length];
@@ -78,13 +77,11 @@ public class AlgorithmRunner {
                 Log.e(TAG, "Exception is FATAL_ERROR_BAD_ARGUMENTS reseting state");
             }
             LibreState.getAndSaveDefaultStateForSensor("-NA-", context);
-            //return new OOPResults(timestamp, -2, 0, null);
-            return new OOPResults(null, null);
+            return null;
         } catch (Exception e2) {
             Log.e(TAG, "cought exception on data_processing_native.processScan ", e2);
             LibreState.getAndSaveDefaultStateForSensor("-NA-", context);
-            //return new OOPResults(timestamp, -3, 0, null);
-            return new OOPResults(null, null);
+            return null;
         }
     }
 }

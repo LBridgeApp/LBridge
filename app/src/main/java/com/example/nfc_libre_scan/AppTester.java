@@ -17,15 +17,13 @@ import java.nio.file.Path;
 public class AppTester {
     private final String databaseName = "testDatabase.db";
     private final Activity activity;
-    private final Logger logger;
 
-    AppTester(Activity activity, Logger logger) {
+    AppTester(Activity activity) {
         this.activity = activity;
-        this.logger = logger;
     }
 
     private void createTestDatabase() throws IOException {
-        logger.inf("Creating test db...");
+        Logger.inf("Creating test db...");
         Path testDBFilePath = activity.getDatabasePath(databaseName).toPath();
 
         OutputStream testDBFileStream = Files.newOutputStream(testDBFilePath);
@@ -41,7 +39,7 @@ public class AppTester {
         testDBFileStream.flush();
         testDBFileStream.close();
         assetsFileStream.close();
-        logger.ok("Test db created");
+        Logger.ok("Test db created");
     }
 
     public boolean runTests() {

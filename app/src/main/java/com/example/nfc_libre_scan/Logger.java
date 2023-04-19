@@ -1,38 +1,38 @@
 package com.example.nfc_libre_scan;
 
-import android.app.Activity;
-import android.content.Context;
 import android.util.Log;
-import android.widget.TextView;
 
 import java.util.Locale;
 
 public class Logger {
-    private final TextView loggerTextView;
-    private final Activity activity;
-
-    private final String TAG = "LibreTools";
-
-    Logger(Activity activity, TextView loggerTextView) {
-        this.loggerTextView = loggerTextView;
-        this.activity = activity;
+    private Logger(){}
+    private static OnLogListener logListener;
+    private static final String TAG = "LibreTools";
+    public static void setLoggerListener(OnLogListener listener){
+        logListener = listener;
     }
 
-    public void inf(String log) {
-        String finalLog = log.toLowerCase(Locale.ROOT);
+    public static void inf(String log) {
+        String finalLog = String.format("INF: %s", log.toLowerCase(Locale.ROOT));
         Log.i(TAG, finalLog);
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("\n%s", finalLog)));
+        if(logListener != null){
+            logListener.onLogReceived(finalLog);
+        }
     }
 
-    public void ok(String log) {
-        String finalLog = log.toLowerCase(Locale.ROOT);
+    public static void ok(String log) {
+        String finalLog = String.format("OK: %s", log.toLowerCase(Locale.ROOT));
         Log.i(TAG, finalLog);
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("\nOK: %s", finalLog)));
+        if(logListener != null){
+            logListener.onLogReceived(finalLog);
+        }
     }
 
-    public void error(String log) {
-        String finalLog = log.toLowerCase(Locale.ROOT);
+    public static void error(String log) {
+        String finalLog = String.format("ERR:\n%s", log);
         Log.e(TAG, finalLog);
-        activity.runOnUiThread(() -> loggerTextView.append(String.format("\nERR: %s", finalLog)));
+        if(logListener != null){
+            logListener.onLogReceived(finalLog);
+        }
     }
 }

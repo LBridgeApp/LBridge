@@ -3,6 +3,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.CurrentBg;
 import com.oop1.GlucoseUnit;
 
@@ -13,13 +14,14 @@ import java.util.zip.CRC32;
 
 public class RealTimeReadingTable {
     private final SQLiteDatabase db;
-    private final CurrentBg currentBg;
+
+    private final LibreMessage libreMessage;
     private final SqliteSequence sqlseq;
     private Integer lastStoredReadingId;
 
-    public RealTimeReadingTable(SQLiteDatabase db, CurrentBg currentBg) throws Exception {
+    public RealTimeReadingTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
-        this.currentBg = currentBg;
+        this.libreMessage = libreMessage;
         sqlseq = new SqliteSequence(db);
         if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
             throw new Exception("Table is null");
@@ -51,7 +53,7 @@ public class RealTimeReadingTable {
          * PROJECTED_HIGH_GLUCOSE(4),
          * HIGH_GLUCOSE(5);
          */
-        double bg = currentBg.convertBG(GlucoseUnit.MMOL).getBG();
+        double bg = libreMessage.getCurrentBgObject().convertBG(GlucoseUnit.MMOL).getBG();
         if (bg < 3.9) {
             return 1;
         } else if (bg > 10.0) {
@@ -85,16 +87,16 @@ public class RealTimeReadingTable {
 
     public void addLastSensorScan() throws IOException {
         this.alarm = this.computeAlarm();
-        this.glucoseValue = currentBg.convertBG(GlucoseUnit.MGDL).getBG();
+        this.glucoseValue = libreMessage.getCurrentBgObject().convertBG(GlucoseUnit.MGDL).getBG();
         this.isActionable = true;
         this.rateOfChange = 0.0;
         this.readingId = this.getLastStoredReadingId() + 1;
         this.sensorId = GeneralUtils.computeSensorId(this.db);
         this.timeChangeBefore = 0;
-        this.timeZone = currentBg.getTimeZone();
-        this.timestampLocal = currentBg.getTimestampLocal();
-        this.timestampUTC = currentBg.getTimestampUTC();
-        this.trendArrow = currentBg.getCurrentTrend().toValue();
+        this.timeZone = libreMessage.getCurrentBgObject().getTimeZone();
+        this.timestampLocal = libreMessage.getCurrentBgObject().getTimestampLocal();
+        this.timestampUTC = libreMessage.getCurrentBgObject().getTimestampUTC();
+        this.trendArrow = libreMessage.getCurrentBgObject().getCurrentTrend().toValue();
         long computedCRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();

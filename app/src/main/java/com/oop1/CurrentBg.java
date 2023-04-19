@@ -15,17 +15,13 @@ public class CurrentBg {
     final int currentSensorTime;
     final TrendArrow currentTrend;
     final GlucoseUnit glucoseUnit;
-    final byte[] patchInfo;
-    final byte[] payload;
 
-    public CurrentBg(long scanUnixTimestamp, double currentBg, int currentSensorTime, TrendArrow currentTrend, GlucoseUnit glucoseUnit, byte[] patchInfo, byte[] payload) {
+    public CurrentBg(long scanUnixTimestamp, double currentBg, int currentSensorTime, TrendArrow currentTrend, GlucoseUnit glucoseUnit) {
         this.scanUnixTimestamp = scanUnixTimestamp;
         this.bg = currentBg;
         this.currentSensorTime = currentSensorTime;
         this.currentTrend = currentTrend;
         this.glucoseUnit = glucoseUnit;
-        this.patchInfo = patchInfo;
-        this.payload = payload;
     }
 
     public TrendArrow getCurrentTrend() {
@@ -42,7 +38,7 @@ public class CurrentBg {
     }
 
     public CurrentBg convertBG(GlucoseUnit unitToConvert) {
-        return new CurrentBg(scanUnixTimestamp, unitToConvert.convertFrom(bg, this.glucoseUnit), currentSensorTime, currentTrend, unitToConvert, patchInfo, payload);
+        return new CurrentBg(scanUnixTimestamp, unitToConvert.convertFrom(bg, this.glucoseUnit), currentSensorTime, currentTrend, unitToConvert);
     }
 
     public long getTimestampUTC(){
@@ -68,16 +64,7 @@ public class CurrentBg {
         ZoneId zoneId = ZoneId.systemDefault();
         return UTC.withZoneSameInstant(zoneId);
     }
-
     public GlucoseUnit getGlucoseUnit() {
         return glucoseUnit;
-    }
-
-    public byte[] getPatchInfo(){
-        return this.patchInfo;
-    }
-
-    public byte[] getPayload(){
-        return this.payload;
     }
 }

@@ -34,7 +34,7 @@ public class CriticalErrorActivity extends AppCompatActivity implements View.OnC
         StringBuilder stackTraceBuilder = new StringBuilder();
         stackTraceBuilder.append(errorObject.getCause()).append("\n");
         for (StackTraceElement element : errorObject.getStackTrace()) {
-            stackTraceBuilder.append("at ").append(element.toString()).append("\n");
+            stackTraceBuilder.append("at\n").append(element.toString()).append("\n");
         }
         String stackTraceMessage = stackTraceBuilder.toString();
 

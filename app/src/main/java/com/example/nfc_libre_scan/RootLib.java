@@ -1,6 +1,7 @@
 package com.example.nfc_libre_scan;
 
 import android.app.Activity;
+import android.content.Context;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,13 +11,11 @@ import java.io.OutputStream;
 
 public class RootLib {
 
-    private final Activity activity;
-    private final Logger logger;
+    private final Context context;
     private Process rootedProcess;
 
-    RootLib(Activity activity, Logger logger) {
-        this.activity = activity;
-        this.logger = logger;
+    RootLib(Context context) {
+        this.context = context;
     }
 
     public void setFilePermission(final String filePath, final int filePermission) throws IOException {

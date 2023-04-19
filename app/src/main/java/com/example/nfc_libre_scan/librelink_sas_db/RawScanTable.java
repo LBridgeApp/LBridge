@@ -3,6 +3,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.CurrentBg;
 
 import java.io.ByteArrayOutputStream;
@@ -13,12 +14,12 @@ import java.util.zip.CRC32;
 public class RawScanTable {
     private final SqliteSequence sqlseq;
     private final SQLiteDatabase db;
-    private final CurrentBg currentBg;
+    private final LibreMessage libreMessage;
     private Integer lastStoredScanId;
 
-    public RawScanTable(SQLiteDatabase db, CurrentBg currentBg) throws Exception {
+    public RawScanTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
-        this.currentBg = currentBg;
+        this.libreMessage = libreMessage;
         this.sqlseq = new SqliteSequence(db);
         if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
             throw new Exception("Table is null");
@@ -57,13 +58,13 @@ public class RawScanTable {
     }
 
     public void addNewSensorScan() throws IOException {
-        this.patchInfo = currentBg.getPatchInfo();
-        this.payload = currentBg.getPayload();
+        this.patchInfo = libreMessage.getPatchInfo();
+        this.payload = libreMessage.getPayload();
         this.scanId = getLastStoredScanId() + 1;
         this.sensorId = GeneralUtils.computeSensorId(this.db);
-        this.timeZone = currentBg.getTimeZone();
-        this.timestampUTC = currentBg.getTimestampUTC();
-        this.timestampLocal = currentBg.getTimestampLocal();
+        this.timeZone = libreMessage.getCurrentBgObject().getTimeZone();
+        this.timestampUTC = libreMessage.getCurrentBgObject().getTimestampUTC();
+        this.timestampLocal = libreMessage.getCurrentBgObject().getTimestampLocal();
         long computedCRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();

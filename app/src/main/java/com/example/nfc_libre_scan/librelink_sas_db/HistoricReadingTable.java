@@ -3,6 +3,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.GlucoseUnit;
 import com.oop1.HistoricBg;
 
@@ -14,13 +15,14 @@ import java.util.zip.CRC32;
 
 public class HistoricReadingTable {
     private final SQLiteDatabase db;
-    private final HistoricBg[] historicBgs;
+
+    private final LibreMessage libreMessage;
     private final SqliteSequence sqlseq;
     private Integer lastStoredReadingId;
 
-    public HistoricReadingTable(SQLiteDatabase db, HistoricBg[] historicBgs) throws Exception {
+    public HistoricReadingTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
-        this.historicBgs = historicBgs;
+        this.libreMessage = libreMessage;
         this.sqlseq = new SqliteSequence(db);
         if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
             throw new Exception("Table is null");
@@ -61,7 +63,7 @@ public class HistoricReadingTable {
     public void addLastSensorScan() throws IOException {
         int lastStoredSampleNumber = this.getSampleNumber();
         int lastStoredReadingId = this.getReadingId();
-        HistoricBg[] missingHistoricBgs = Arrays.stream(historicBgs)
+        HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgArray())
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
                 .toArray(HistoricBg[]::new);
 

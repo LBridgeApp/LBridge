@@ -1,11 +1,11 @@
 package com.example.nfc_libre_scan;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 
+import android.app.ActivityManager;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -22,10 +22,10 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements OnLibreMessageListener, RadioGroup.OnCheckedChangeListener {
+public class MainActivity extends AppCompatActivity implements OnLibreMessageListener, RadioGroup.OnCheckedChangeListener, OnLogListener {
     private TextView currentBgView;
     private TextView bgHistoryView;
-    private Logger logger;
+    private TextView logTextView;
     private LibreMessage libreMessage;
     private GlucoseUnit glucoseUnit = GlucoseUnit.MMOL;
 
@@ -35,23 +35,24 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         Thread.setDefaultUncaughtExceptionHandler(new CriticalErrorHandler(this.getApplicationContext()));
         setContentView(R.layout.activity_main);
 
-        logger = new Logger(this, findViewById(R.id.logTextView));
+        logTextView = this.findViewById(R.id.logTextView);
+        Logger.setLoggerListener(this);
 
-        AppTester appTester = new AppTester(this, logger);
+        AppTester appTester = new AppTester(this);
         boolean testsPassed = appTester.runTests();
         if (testsPassed) {
-            logger.ok("Tests passed!");
+            Logger.ok("Tests passed!");
         }
         if (!testsPassed) {
-            logger.error("Tests failed! Exiting.");
+            Logger.error("Tests failed! Exiting.");
             return;
         }
 
-        Libre libre = new Libre(this, logger);
+        Libre libre = new Libre(this);
         libre.listenSensor();
         libre.setLibreListener(this);
 
-        LibreLink libreLink = new LibreLink(this, logger);
+        LibreLink libreLink = new LibreLink(this);
         libreLink.listenLibreMessages(libre);
 
         currentBgView = this.findViewById(R.id.currentBgView);
@@ -74,6 +75,10 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         RadioGroup glucoseUnitRadioGroup = this.findViewById(R.id.glucose_unit);
         glucoseUnitRadioGroup.setOnCheckedChangeListener(this);
 
+        boolean startedFirstTime = WebService.startService(this);
+        if(!startedFirstTime){
+            Logger.error("WebService already running.");
+        }
     }
 
     private void showBG() {
@@ -110,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
             this.runOnUiThread(() -> this.bgHistoryView.setText(historicBgBuilder));
 
         } catch (Exception e) {
-            logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
         }
     }
 
@@ -129,5 +134,10 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
             this.glucoseUnit = GlucoseUnit.MGDL;
         }
         this.showBG();
+    }
+
+    @Override
+    public void onLogReceived(String log) {
+        this.runOnUiThread(() -> logTextView.append("\n" + log + "\n"));
     }
 }
