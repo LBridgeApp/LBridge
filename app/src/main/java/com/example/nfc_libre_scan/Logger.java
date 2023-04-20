@@ -13,7 +13,7 @@ public class Logger {
     }
 
     public static void inf(String log) {
-        String finalLog = String.format("INF: %s", log.toLowerCase(Locale.ROOT));
+        String finalLog = String.format("[INF] %s", log);
         Log.i(TAG, finalLog);
         if(logListener != null){
             logListener.onLogReceived(finalLog);
@@ -21,7 +21,7 @@ public class Logger {
     }
 
     public static void ok(String log) {
-        String finalLog = String.format("OK: %s", log.toLowerCase(Locale.ROOT));
+        String finalLog = String.format("[OK] %s", log);
         Log.i(TAG, finalLog);
         if(logListener != null){
             logListener.onLogReceived(finalLog);
@@ -29,7 +29,7 @@ public class Logger {
     }
 
     public static void error(String log) {
-        String finalLog = String.format("ERR:\n%s", log);
+        String finalLog = String.format("[ERR] %s", log);
         Log.e(TAG, finalLog);
         if(logListener != null){
             logListener.onLogReceived(finalLog);

@@ -49,10 +49,10 @@ public class LibreMessage {
         return oopResults.getHistoricBgArray();
     }
 
-    public LibreMessage(byte[] patchUID, byte[] patchInfo, byte[] payload, String libreSN, OOPResults oopResults) throws Exception {
-        this.patchUID = patchUID;
-        this.patchInfo = patchInfo;
-        this.payload = payload;
+    public LibreMessage(RawLibreData rawLibreData, String libreSN, OOPResults oopResults) throws Exception {
+        this.patchUID = rawLibreData.getPatchUID();
+        this.patchInfo = rawLibreData.getPatchInfo();
+        this.payload = rawLibreData.getPayload();
         this.libreSN = libreSN;
         this.oopResults = oopResults;
 

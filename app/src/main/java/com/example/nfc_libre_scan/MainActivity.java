@@ -2,16 +2,13 @@ package com.example.nfc_libre_scan;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.ActivityManager;
-import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
-import com.example.nfc_libre_scan.libre.Libre;
+import com.example.nfc_libre_scan.libre.LibreNFC;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.CurrentBg;
 import com.oop1.GlucoseUnit;
@@ -48,12 +45,12 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
             return;
         }
 
-        Libre libre = new Libre(this);
-        libre.listenSensor();
-        libre.setLibreListener(this);
+        LibreNFC libreNFC = new LibreNFC(this);
+        libreNFC.listenSensor();
+        libreNFC.setLibreListener(this);
 
         LibreLink libreLink = new LibreLink(this);
-        libreLink.listenLibreMessages(libre);
+        libreLink.listenLibreMessages(libreNFC);
 
         currentBgView = this.findViewById(R.id.currentBgView);
         bgHistoryView = this.findViewById(R.id.bgHistoryView);
@@ -75,10 +72,7 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         RadioGroup glucoseUnitRadioGroup = this.findViewById(R.id.glucose_unit);
         glucoseUnitRadioGroup.setOnCheckedChangeListener(this);
 
-        boolean startedFirstTime = WebService.startService(this);
-        if(!startedFirstTime){
-            Logger.error("WebService already running.");
-        }
+        WebService.startService(this);
     }
 
     private void showBG() {

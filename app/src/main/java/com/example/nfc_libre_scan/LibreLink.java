@@ -7,7 +7,7 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.view.View;
 
-import com.example.nfc_libre_scan.libre.Libre;
+import com.example.nfc_libre_scan.libre.LibreNFC;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink_sas_db.HistoricReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
@@ -29,8 +29,8 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         this.ourDbPath = context.getDatabasePath("sas.db").getAbsolutePath();
     }
 
-    public void listenLibreMessages(Libre libre) {
-        libre.setLibreListener(this);
+    public void listenLibreMessages(LibreNFC libreNFC) {
+        libreNFC.setLibreListener(this);
     }
 
     public void listenLibreMessages(WebServer server){

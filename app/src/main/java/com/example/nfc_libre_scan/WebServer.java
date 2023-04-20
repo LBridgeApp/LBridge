@@ -1,14 +1,25 @@
 package com.example.nfc_libre_scan;
 
+import android.content.Context;
+
+import com.example.nfc_libre_scan.libre.Libre;
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.libre.RawLibreData;
+import com.google.gson.Gson;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
 class WebServer extends NanoHTTPD {
+    private final Context context;
     public static final int port = 4545;
     private OnLibreMessageListener listener;
-    public WebServer(String hostname, int port) {
+    public WebServer(Context context, String hostname, int port) {
         super(hostname, port);
+        this.context = context;
     }
 
     @Override
@@ -23,12 +34,46 @@ class WebServer extends NanoHTTPD {
     }
 
     private Response onGet(IHTTPSession session){
+        return NOT_FOUND();
+    }
+
+    private Response onPOST(IHTTPSession session) {
+        Map<String, String> headers = session.getHeaders();
+        // имена заголовков здесь почему-то с маленькой буквы
+        String sender = headers.get("Sender".toLowerCase());
+        String messageTo = headers.get("MessageTo".toLowerCase());
+        if(sender != null && sender.equals("Xdrip+")){
+            if(messageTo != null && messageTo.equals("LibreviewBridge")){
+                try {
+                    final HashMap<String, String> map = new HashMap<>();
+                    session.parseBody(map);
+                    final String json = map.get("postData");
+
+                    RawLibreData rawLibreData = new Gson().fromJson(json, RawLibreData.class);
+                    Libre libre = new Libre(context, rawLibreData);
+
+                    LibreMessage libreMessage = libre.getLibreMessage();
+
+                    Logger.ok("LibreMessage received from server.");
+
+                    listener.onLibreMessageReceived(libreMessage);
+                    return this.OK();
+                } catch (Exception e) {
+                    return this.INTERNAL_SERVER_ERROR();
+                }
+            }
+        }
         return this.NOT_FOUND();
     }
 
-    private Response onPOST(IHTTPSession session){
-        //listener.onLibreMessageReceived(new LibreMessage(null, null, null, null, null));
-        return this.NOT_FOUND();
+    private Response OK(){
+        String msg = "200 OK";
+        return newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, msg);
+    }
+
+    private Response INTERNAL_SERVER_ERROR(){
+        String msg = "500 Internal Server Error";
+        return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, msg);
     }
 
     private Response NOT_FOUND() {

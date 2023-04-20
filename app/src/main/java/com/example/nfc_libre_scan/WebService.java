@@ -1,6 +1,5 @@
 package com.example.nfc_libre_scan;
 
-import android.app.ActivityManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
@@ -13,26 +12,21 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.IBinder;
-import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
-import com.example.nfc_libre_scan.libre.LibreMessage;
-
 import java.util.List;
-
-import fi.iki.elonen.NanoHTTPD;
 
 public class WebService extends Service {
     private static boolean webServiceIsRunning = false;
 
-    public static boolean startService(Context context) {
+    public static void startService(Context context) {
         if (!WebService.webServiceIsRunning) {
             Intent intent = new Intent(context, WebService.class);
             context.startForegroundService(intent);
-            return true;
+            Logger.ok("WebService started");
         }
-        return false;
+        Logger.error("WebService already running.");
     }
 
     private NotificationManager notificationManager;
@@ -55,13 +49,13 @@ public class WebService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(1, notificationBuilder.build());
 
-        server = new WebServer(null, WebServer.port);
+        server = new WebServer(this,null, WebServer.port);
         try {
             server.start();
-            Toast.makeText(this, "Web server started", Toast.LENGTH_SHORT).show();
+            Logger.ok("Web server started.");
         } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Failed to start web server", Toast.LENGTH_SHORT).show();
+            Logger.error("Failed to start web server.");
+            Logger.error(e.getLocalizedMessage());
         }
 
         libreLink.listenLibreMessages(server);
@@ -73,7 +67,7 @@ public class WebService extends Service {
         if (server != null) {
             server.stop();
         }
-        Toast.makeText(this, "Web server stopped", Toast.LENGTH_SHORT).show();
+        Logger.ok("Web server stopped.");
         WebService.webServiceIsRunning = false;
         super.onDestroy();
     }
@@ -114,15 +108,15 @@ public class WebService extends Service {
 
     static class NetworkCallback extends ConnectivityManager.NetworkCallback {
         private final ConnectivityManager connectivityManager;
-        private final NotificationCompat.Builder builder;
-        private final NotificationManager manager;
-        private final int port;
+        private final NotificationCompat.Builder notificationBuilder;
+        private final NotificationManager notificationManager;
+        private final int serverPort;
 
-        NetworkCallback(NotificationManager manager, NotificationCompat.Builder builder, ConnectivityManager connectivityManager, int port) {
+        NetworkCallback(NotificationManager notificationManager, NotificationCompat.Builder notificationBuilder, ConnectivityManager connectivityManager, int serverPort) {
             this.connectivityManager = connectivityManager;
-            this.builder = builder;
-            this.manager = manager;
-            this.port = port;
+            this.notificationBuilder = notificationBuilder;
+            this.notificationManager = notificationManager;
+            this.serverPort = serverPort;
         }
 
         public void onAvailable(Network network) {
@@ -157,9 +151,9 @@ public class WebService extends Service {
             String text = String.format("Where to send libreMessages:\n" +
                     "Port: %s\n" +
                     "Phone network: localhost ( 127.0.0.1 )\n" +
-                    "Another networks:\n%s\n", port, getIPs());
-            builder.setContentText(text);
-            manager.notify(1, builder.build());
+                    "Another networks:\n%s\n", serverPort, getIPs());
+            notificationBuilder.setContentText(text);
+            notificationManager.notify(1, notificationBuilder.build());
         }
 
         private String getIPs() {
