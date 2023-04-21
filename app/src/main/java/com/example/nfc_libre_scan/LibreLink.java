@@ -1,6 +1,8 @@
 package com.example.nfc_libre_scan;
 
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
+import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -15,13 +17,24 @@ import com.example.nfc_libre_scan.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
 
 import java.io.IOException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
+    @SuppressLint("SdCardPath")
+    private static final String librelink_sas_db_path = "/data/data/com.freestylelibre.app.ru/files/sas.db";
+    @SuppressLint("SdCardPath")
+    private static final String librelink_apollo_db_path = "/data/data/com.freestylelibre.app.ru/files/apollo.db";
     private LibreMessage libreMessage;
     private final Context context;
     private final RootLib rootLib;
     private final String ourDbPath;
+    private LocalDateTime lastSentTime;
+
+    private LocalDateTime nextSentTime = LocalDateTime.now();
 
     LibreLink(Context context) {
         this.context = context;
@@ -39,16 +52,6 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.sugarAddingBtn || v.getId() == R.id.removeLibrelinkDB) {
-            boolean granted = rootLib.requestRoot();
-            if (!granted) {
-                Logger.error("Root is not granted.");
-                return;
-            } else {
-                Logger.ok("Root granted");
-            }
-        }
-
         if (v.getId() == R.id.sugarAddingBtn) {
             addLastScanToDatabase();
         }
@@ -68,11 +71,19 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             return;
         }
 
+        if(context instanceof Service && LocalDateTime.now().isBefore(this.nextSentTime)){
+            DateTimeFormatter df = DateTimeFormatter.ofPattern("HH:mm");
+            Logger.error(String.format("Data has already been sent at %s.\n" +
+                    "Not sending again.\n" +
+                    "The next sending will occur no earlier than %s", lastSentTime.format(df), nextSentTime.format(df)));
+            return;
+        }
+
         killLibreLink();
         try {
-            rootLib.copyFile(Consts.librelink_sas_db_path, ourDbPath);
+            rootLib.copyFile(LibreLink.librelink_sas_db_path, ourDbPath);
             Logger.ok("db to our app copied");
-        } catch (IOException e) {
+        } catch (Exception e) {
             Logger.error("Failed to copy db to our app");
             Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
@@ -81,7 +92,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         try {
             rootLib.setFilePermission(ourDbPath, 666);
             Logger.ok("Permission 666 set to db in our app");
-        } catch (IOException e) {
+        } catch (Exception e) {
             Logger.error("Failed to set 666 permission to db in our app");
             Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
@@ -98,32 +109,36 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         }
 
         try {
-            rootLib.copyFile(ourDbPath, Consts.librelink_sas_db_path);
+            rootLib.copyFile(ourDbPath, LibreLink.librelink_sas_db_path);
             Logger.ok("edited db to librelink app copied!");
-        } catch (IOException e) {
+        } catch (Exception e) {
             Logger.error("Failed to copy db to librelink app");
             Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
 
         try {
-            rootLib.setFilePermission(Consts.librelink_sas_db_path, 660);
+            rootLib.setFilePermission(LibreLink.librelink_sas_db_path, 660);
             Logger.ok("permission 660 set to db in librelink app");
-        } catch (IOException e) {
+        } catch (Exception e) {
             Logger.error("Failed to set 660 permission to db in librelink app");
             Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
             return;
         }
         startLibreLink();
+
+        this.lastSentTime = LocalDateTime.now();
+        long nextMinutes = 60 + new SecureRandom().nextInt(61);
+        this.nextSentTime = LocalDateTime.now().plusMinutes(nextMinutes);
     }
 
     public void removeLibreLinkDatabases() {
         killLibreLink();
         try {
-            rootLib.removeFile(Consts.librelink_sas_db_path);
-            rootLib.removeFile(Consts.librelink_apollo_db_path);
+            rootLib.removeFile(LibreLink.librelink_sas_db_path);
+            rootLib.removeFile(LibreLink.librelink_apollo_db_path);
             Logger.ok("LibreLink dbs removed");
-        } catch (IOException e) {
+        } catch (Exception e) {
             Logger.error("Failed to remove librelink dbs");
         }
     }
@@ -188,5 +203,9 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
     public void onLibreMessageReceived(LibreMessage libreMessage) {
         Logger.ok("New LibreMessage received.");
         this.libreMessage = libreMessage;
+
+        if (context instanceof Service) {
+            this.addLastScanToDatabase();
+        }
     }
 }

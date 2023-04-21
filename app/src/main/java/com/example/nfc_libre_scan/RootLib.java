@@ -11,14 +11,15 @@ import java.io.OutputStream;
 
 public class RootLib {
 
-    private final Context context;
     private Process rootedProcess;
 
     RootLib(Context context) {
-        this.context = context;
+        // Context is not needed for that library.
+        // But it is needed for starting from service or activity only.
     }
 
-    public void setFilePermission(final String filePath, final int filePermission) throws IOException {
+    public void setFilePermission(final String filePath, final int filePermission) throws Exception {
+        this.onRootNeeded();
         final String cmd = String.format("chmod %s %s", filePermission, filePath);
         boolean ok = this.runCmd(cmd);
         if (!ok) {
@@ -26,7 +27,8 @@ public class RootLib {
         }
     }
 
-    public void removeFile(final String filePath) throws IOException {
+    public void removeFile(final String filePath) throws Exception {
+        this.onRootNeeded();
         final String isFileExistsCmd = String.format("test -e %s", filePath);
         boolean fileExists = this.runCmd(isFileExistsCmd);
         if (!fileExists) {
@@ -39,7 +41,8 @@ public class RootLib {
         }
     }
 
-    public void copyFile(final String from, final String to) throws IOException {
+    public void copyFile(final String from, final String to) throws Exception {
+        this.onRootNeeded();
         final String cmd = String.format("cp %s %s", from, to);
         boolean ok = this.runCmd(cmd);
         if (!ok) {
@@ -47,7 +50,8 @@ public class RootLib {
         }
     }
 
-    private boolean runCmd(final String command) {
+    private boolean runCmd(final String command) throws Exception {
+        this.onRootNeeded();
         final String okMsg = "OKAY!";
         final String fatalMsg = "FATAL!";
         final String cmd = String.format("%s && echo %s || echo %s\n", command, okMsg, fatalMsg);
@@ -68,7 +72,7 @@ public class RootLib {
         return false;
     }
 
-    public boolean requestRoot() {
+    private boolean requestRoot() {
         try {
             Process process = Runtime.getRuntime().exec("su");
 
@@ -88,5 +92,12 @@ public class RootLib {
         } catch (IOException ignored) {
         }
         return false;
+    }
+
+    private void onRootNeeded() throws Exception {
+        boolean rootGranted = this.requestRoot();
+        if(!rootGranted){
+            throw new Exception("Root is not granted.");
+        }
     }
 }

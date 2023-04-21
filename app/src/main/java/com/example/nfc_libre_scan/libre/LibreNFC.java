@@ -64,8 +64,7 @@ public class LibreNFC implements NfcAdapter.ReaderCallback {
             byte[] payload = this.queryPayload();
             long timestamp = System.currentTimeMillis();
             RawLibreData rawLibreData = new RawLibreData(patchUID, patchInfo, payload, timestamp);
-            Libre libre = new Libre(activity, rawLibreData);
-            LibreMessage libreMessage = libre.getLibreMessage();
+            LibreMessage libreMessage = LibreMessage.getInstance(activity, rawLibreData);
             listeners.forEach(l -> l.onLibreMessageReceived(libreMessage));
             Vibrator.SCAN_SUCCESS.vibrate(activity);
 

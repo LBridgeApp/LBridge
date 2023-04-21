@@ -37,6 +37,10 @@ public class WebService extends Service {
 
     @Override
     public void onCreate() {
+        Thread.setDefaultUncaughtExceptionHandler(new CriticalErrorHandler(this.getApplicationContext()));
+
+        // TODO: Посмотреть, как работает запуск активити из-под сервиса.
+
         WebService.webServiceIsRunning = true;
         this.notificationManager = getSystemService(NotificationManager.class);
         this.connectivityManager = this.getSystemService(ConnectivityManager.class);

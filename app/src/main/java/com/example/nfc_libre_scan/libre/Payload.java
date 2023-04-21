@@ -9,7 +9,7 @@ public class Payload {
 
     public static boolean verify(byte[] payload){
         // Continue for libre1,2 checks
-        if (payload.length < payloadBytesLength) {
+        if (payload == null || payload.length < payloadBytesLength) {
             //logger.error("Must have at least 344 bytes for libre data");
             return false;
         }

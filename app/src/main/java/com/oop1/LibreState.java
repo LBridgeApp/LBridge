@@ -16,12 +16,12 @@ public class LibreState {
     private static final String SAVED_NA = "-NA-";
 
     public static LibreSavedState getDefaultState() {
-        return new LibreSavedState();
+        return new LibreSavedState(null, null);
     }
 
     public static LibreSavedState getAndSaveDefaultStateForSensor(String sensorId, Context context) {
         LibreSavedState newState = getDefaultState();
-        saveSensorState(sensorId, newState.compositeState, newState.attenuationState, context);
+        saveSensorState(sensorId, newState.getCompositeState(), newState.getAttenuationState(), context);
         return newState;
     }
 
@@ -64,12 +64,11 @@ public class LibreState {
             Log.d(TAG, "dabear: returning default state to caller, new sensorId detected: " + sensorId);
             return getAndSaveDefaultStateForSensor(sensorId, context);
         } else {
-            LibreSavedState libreSavedState = new LibreSavedState();
+            LibreSavedState libreSavedState;
             try {
                 byte[] compositeState = Base64.decode(savedCompositeState, 0);
                 byte[] attenuationState = Base64.decode(savedAttenuationState, 0);
-                libreSavedState.compositeState = compositeState;
-                libreSavedState.attenuationState = attenuationState;
+                libreSavedState = new LibreSavedState(attenuationState, compositeState);
                 return libreSavedState;
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "dabear: could not decode sensor state, returning default state to caller");

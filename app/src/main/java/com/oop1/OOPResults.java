@@ -4,19 +4,24 @@ package com.oop1;
 /* compiled from: OOPResultsContainer.java */
 /* loaded from: classes.dex */
 public class OOPResults {
-    CurrentBg currentBg;
-    HistoricBg[] historicBgArray;
+    private final CurrentBg currentBg;
+    private final HistoricBg[] historicBgArray;
 
-    public OOPResults(CurrentBg currentBg, HistoricBg[] historicBgs){
+    private final LibreSavedState libreSavedState;
+
+    public OOPResults(CurrentBg currentBg, HistoricBg[] historicBgs, LibreSavedState libreSavedState){
         this.currentBg = currentBg;
         this.historicBgArray = historicBgs;
+        this.libreSavedState = libreSavedState;
     }
 
-    public HistoricBg[] getHistoricBgArray(){
+    public HistoricBg[] getHistoricBgs(){
         return this.historicBgArray;
     }
 
-    public CurrentBg getCurrentBgObject(){
+    public CurrentBg getCurrentBg(){
         return this.currentBg;
     }
+
+    public LibreSavedState getLibreSavedState(){ return this.libreSavedState; }
 }

@@ -12,6 +12,7 @@ public class Logger {
         logListener = listener;
     }
 
+    // TODO: рассмотреть идею писать логи в базу данных
     public static void inf(String log) {
         String finalLog = String.format("[INF] %s", log);
         Log.i(TAG, finalLog);

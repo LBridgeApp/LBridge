@@ -4,207 +4,79 @@ import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.oop1.CurrentBg;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
 public class SensorTable {
 
     private final SQLiteDatabase db;
-
     private final LibreMessage libreMessage;
-    private Integer lastStoredSensorId;
 
     public SensorTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.libreMessage = libreMessage;
-        if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
-            throw new Exception("Table is null");
+        if(SQLUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
+        }
+
+        this.testReadingOrWriting(SQLUtils.Mode.READING);
+    }
+
+    private void testReadingOrWriting(SQLUtils.Mode mode) throws Exception {
+        this.fillClassByValuesInLastSensorRecord();
+        long computedCRC = this.computeCRC32();
+        long originalCRC = this.CRC;
+        if(computedCRC != originalCRC){
+            throw new Exception(String.format("%s table %s test is not passed.", TableStrings.TABLE_NAME, mode));
         }
     }
 
     public boolean isSensorExpired(){
-        long diffMillis = libreMessage.getCurrentBgObject().getTimestampUTC() - this.getSensorStartTimestampUTC();
+        long diffMillis = libreMessage.getCurrentBg().getTimestampUTC() - (long) this.getRelatedValueForLastSensorId(TableStrings.getSensorStartTimestampUTC);
         long diffDays = TimeUnit.DAYS.convert(diffMillis, TimeUnit.MILLISECONDS);
         return diffDays >= 14;
     }
 
     private Integer getLastStoredSensorId() {
-        if (this.lastStoredSensorId == null) {
-            this.lastStoredSensorId = GeneralUtils.getLastStoredFieldValue(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
-        }
-        return lastStoredSensorId;
+        return SQLUtils.getLastStoredFieldValue(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastSensorId(String fieldName) {
         final int lastStoredSensorId = getLastStoredSensorId();
-        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
+        return SQLUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
     }
 
-    public void updateToLastScan() throws IOException {
+    public void updateToLastScan() throws Exception {
         this.fillClassByValuesInLastSensorRecord();
-        this.lastScanSampleNumber = libreMessage.getCurrentBgObject().getSampleNumber();
-        this.lastScanTimeZone = libreMessage.getCurrentBgObject().getTimeZone();
-        this.lastScanTimestampLocal = libreMessage.getCurrentBgObject().getTimestampLocal();
-        this.lastScanTimestampUTC = libreMessage.getCurrentBgObject().getTimestampUTC();
-        final long computedCRC = this.computeCRC32();
+        this.attenuationState = libreMessage.getLibreSavedState().getAttenuationState();
+        this.compositeState = libreMessage.getLibreSavedState().getCompositeState();
+        this.lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
+        this.lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
+        this.lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
+        this.lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
+        long computedCRC = this.computeCRC32();
 
-        final String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=%s WHERE %s=%s;",
+        final String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=%s, %s=%s, %s=%s WHERE %s=%s;",
                 TableStrings.TABLE_NAME,
                 TableStrings.lastScanSampleNumber, lastScanSampleNumber,
                 TableStrings.lastScanTimeZone, DatabaseUtils.sqlEscapeString(lastScanTimeZone),
                 TableStrings.lastScanTimestampLocal, lastScanTimestampLocal,
                 TableStrings.lastScanTimestampUTC, lastScanTimestampUTC,
-                TableStrings.CRC, computedCRC,
-                TableStrings.sensorId, this.sensorId);
+                TableStrings.sensorId, this.sensorId,
+                TableStrings.attenuationState, DatabaseUtils.sqlEscapeString(Arrays.toString(this.attenuationState)),
+                TableStrings.compositeState, DatabaseUtils.sqlEscapeString(Arrays.toString(this.compositeState)),
+                TableStrings.CRC, computedCRC);
         db.execSQL(sql);
+        this.onTableChanged();
     }
 
-    public long getComputedCRC() throws IOException {
-        return computeCRC32();
-    }
-
-    private byte[] attenuationState;
-    private byte[] bleAddress;
-    private byte[] compositeState;
-    private int enableStreamingTimestamp;
-    private boolean endedEarly;
-    private byte[] initialPatchInformation;
-    private int lastScanSampleNumber;
-    private String lastScanTimeZone;
-    private long lastScanTimestampLocal;
-    private long lastScanTimestampUTC;
-    private boolean lsaDetected;
-    private byte[] measurementState;
-    private int personalizationIndex;
-    private int sensorId;
-    private String sensorStartTimeZone;
-    private long sensorStartTimestampLocal;
-    private long sensorStartTimestampUTC;
-    private String serialNumber;
-    private byte[] streamingAuthenticationData;
-    private int streamingUnlockCount;
-    private byte[] uniqueIdentifier;
-    private long unrecordedHistoricTimeChange;
-    private long unrecordedRealTimeTimeChange;
-    private int userId;
-    private int warmupPeriodInMinutes;
-    private int wearDurationInMinutes;
-
-    private byte[] getAttenuationState() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.attenuationState);
-    }
-
-    private byte[] getBleAddress() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.bleAddress);
-    }
-
-    private byte[] getCompositeState() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.compositeState);
-    }
-
-    private int getEnableStreamingTimestamp() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.enableStreamingTimestamp);
-        return l.intValue();
-    }
-
-    private boolean getEndedEarly() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.endedEarly) != 0;
-    }
-
-    private byte[] getInitialPatchInformation() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.initialPatchInformation);
-    }
-
-    private int getLastScanSampleNumber() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.lastScanSampleNumber);
-        return l.intValue();
-    }
-
-    private String getLastScanTimeZone() {
-        return (String) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimeZone);
-    }
-
-    private long getLastScanTimestampLocal() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampLocal);
-    }
-
-    private long getLastScanTimestampUTC() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampUTC);
-    }
-
-    private boolean getLsaDetected() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.lsaDetected) != 0;
-    }
-
-    private byte[] getMeasurementState() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.measurementState);
-    }
-
-    private int getPersonalizationIndex() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.personalizationIndex);
-        return l.intValue();
-    }
-
-    private int getSensorId() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.sensorId);
-        return l.intValue();
-    }
-
-    private String getSensorStartTimeZone() {
-        return (String) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimeZone);
-    }
-
-    private long getSensorStartTimestampLocal() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimestampLocal);
-    }
-
-    private long getSensorStartTimestampUTC() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.getSensorStartTimestampUTC);
-    }
-
-    private String getSerialNumber() {
-        return (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
-    }
-
-    private byte[] getStreamingAuthenticationData() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.streamingAuthenticationData);
-    }
-
-    private int getStreamingUnlockCount() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.streamingUnlockCount);
-        return l.intValue();
-    }
-
-    private byte[] getUniqueIdentifier() {
-        return (byte[]) this.getRelatedValueForLastSensorId(TableStrings.uniqueIdentifier);
-    }
-
-    private long getUnrecordedHistoricTimeChange() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.unrecordedHistoricTimeChange);
-    }
-
-    private long getUnrecordedRealTimeTimeChange() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.unrecordedRealTimeTimeChange);
-    }
-
-    private int getUserId() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.userId);
-        return l.intValue();
-    }
-
-    private int getWarmupPeriodInMinutes() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.warmupPeriodInMinutes);
-        return l.intValue();
-    }
-
-    private int getWearDurationInMinutes() {
-        Long l = (Long) this.getRelatedValueForLastSensorId(TableStrings.wearDurationInMinutes);
-        return l.intValue();
+    private void onTableChanged() throws Exception {
+        this.testReadingOrWriting(SQLUtils.Mode.WRITING);
     }
 
     private long computeCRC32() throws IOException {
@@ -258,6 +130,90 @@ public class SensorTable {
         return crc32.getValue();
     }
 
+    public void fillClassByValuesInLastSensorRecord() {
+        this.attenuationState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.attenuationState);
+
+        this.bleAddress = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.bleAddress);
+
+        this.compositeState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.compositeState);
+
+        this.enableStreamingTimestamp = ((Long) this.getRelatedValueForLastSensorId(TableStrings.enableStreamingTimestamp)).intValue();
+
+        this.endedEarly = (long) this.getRelatedValueForLastSensorId(TableStrings.endedEarly) != 0;
+
+        this.initialPatchInformation = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.initialPatchInformation);
+
+        this.lastScanSampleNumber = ((Long) this.getRelatedValueForLastSensorId(TableStrings.lastScanSampleNumber)).intValue();
+
+        this.lastScanTimeZone = (String) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimeZone);
+
+        this.lastScanTimestampLocal = (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampLocal);
+
+        this.lastScanTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampUTC);
+
+        this.lsaDetected = (long) this.getRelatedValueForLastSensorId(TableStrings.lsaDetected) != 0;
+
+        this.measurementState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.measurementState);
+
+        this.personalizationIndex = ((Long) this.getRelatedValueForLastSensorId(TableStrings.personalizationIndex)).intValue();
+
+        this.sensorId = ((Long) this.getRelatedValueForLastSensorId(TableStrings.sensorId)).intValue();
+
+        this.sensorStartTimeZone = (String) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimeZone);
+
+        this.sensorStartTimestampLocal = (long) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimestampLocal);
+
+        this.sensorStartTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.getSensorStartTimestampUTC);
+
+        this.serialNumber = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
+
+        this.streamingAuthenticationData = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.streamingAuthenticationData);
+
+        this.streamingUnlockCount = ((Long) this.getRelatedValueForLastSensorId(TableStrings.streamingUnlockCount)).intValue();
+
+        this.uniqueIdentifier = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.uniqueIdentifier);
+
+        this.unrecordedHistoricTimeChange = (long) this.getRelatedValueForLastSensorId(TableStrings.unrecordedHistoricTimeChange);
+
+        this.unrecordedRealTimeTimeChange = (long) this.getRelatedValueForLastSensorId(TableStrings.unrecordedRealTimeTimeChange);
+
+        this.userId = ((Long) this.getRelatedValueForLastSensorId(TableStrings.userId)).intValue();
+
+        this.warmupPeriodInMinutes = ((Long) this.getRelatedValueForLastSensorId(TableStrings.warmupPeriodInMinutes)).intValue();
+
+        this.wearDurationInMinutes = ((Long) this.getRelatedValueForLastSensorId(TableStrings.wearDurationInMinutes)).intValue();
+
+        this.CRC = (long) this.getRelatedValueForLastSensorId(TableStrings.CRC);
+    }
+
+    private byte[] attenuationState;
+    private byte[] bleAddress;
+    private byte[] compositeState;
+    private int enableStreamingTimestamp;
+    private boolean endedEarly;
+    private byte[] initialPatchInformation;
+    private int lastScanSampleNumber;
+    private String lastScanTimeZone;
+    private long lastScanTimestampLocal;
+    private long lastScanTimestampUTC;
+    private boolean lsaDetected;
+    private byte[] measurementState;
+    private int personalizationIndex;
+    private int sensorId;
+    private String sensorStartTimeZone;
+    private long sensorStartTimestampLocal;
+    private long sensorStartTimestampUTC;
+    private String serialNumber;
+    private byte[] streamingAuthenticationData;
+    private int streamingUnlockCount;
+    private byte[] uniqueIdentifier;
+    private long unrecordedHistoricTimeChange;
+    private long unrecordedRealTimeTimeChange;
+    private int userId;
+    private int warmupPeriodInMinutes;
+    private int wearDurationInMinutes;
+    private long CRC;
+
     private static class TableStrings {
         final static String TABLE_NAME = "sensors";
         final static String attenuationState = "attenuationState";
@@ -287,34 +243,5 @@ public class SensorTable {
         final static String warmupPeriodInMinutes = "warmupPeriodInMinutes";
         final static String wearDurationInMinutes = "wearDurationInMinutes";
         final static String CRC = "CRC";
-    }
-
-    public void fillClassByValuesInLastSensorRecord() {
-        this.attenuationState = getAttenuationState();
-        this.bleAddress = getBleAddress();
-        this.compositeState = getCompositeState();
-        this.enableStreamingTimestamp = getEnableStreamingTimestamp();
-        this.endedEarly = getEndedEarly();
-        this.initialPatchInformation = getInitialPatchInformation();
-        this.lastScanSampleNumber = getLastScanSampleNumber();
-        this.lastScanTimeZone = getLastScanTimeZone();
-        this.lastScanTimestampLocal = getLastScanTimestampLocal();
-        this.lastScanTimestampUTC = getLastScanTimestampUTC();
-        this.lsaDetected = getLsaDetected();
-        this.measurementState = getMeasurementState();
-        this.personalizationIndex = getPersonalizationIndex();
-        this.sensorId = getSensorId();
-        this.sensorStartTimeZone = getSensorStartTimeZone();
-        this.sensorStartTimestampLocal = getSensorStartTimestampLocal();
-        this.sensorStartTimestampUTC = getSensorStartTimestampUTC();
-        this.serialNumber = getSerialNumber();
-        this.streamingAuthenticationData = getStreamingAuthenticationData();
-        this.streamingUnlockCount = getStreamingUnlockCount();
-        this.uniqueIdentifier = getUniqueIdentifier();
-        this.unrecordedHistoricTimeChange = getUnrecordedHistoricTimeChange();
-        this.unrecordedRealTimeTimeChange = getUnrecordedRealTimeTimeChange();
-        this.userId = getUserId();
-        this.warmupPeriodInMinutes = getWarmupPeriodInMinutes();
-        this.wearDurationInMinutes = getWearDurationInMinutes();
     }
 }

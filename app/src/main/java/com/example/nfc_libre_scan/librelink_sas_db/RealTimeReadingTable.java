@@ -4,7 +4,6 @@ import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.oop1.CurrentBg;
 import com.oop1.GlucoseUnit;
 
 import java.io.ByteArrayOutputStream;
@@ -17,31 +16,33 @@ public class RealTimeReadingTable {
 
     private final LibreMessage libreMessage;
     private final SqliteSequence sqlseq;
-    private Integer lastStoredReadingId;
 
     public RealTimeReadingTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.libreMessage = libreMessage;
         sqlseq = new SqliteSequence(db);
-        if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
-            throw new Exception("Table is null");
+        if(SQLUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
+        }
+
+        this.testReadingOrWriting(SQLUtils.Mode.READING);
+    }
+    private void testReadingOrWriting(SQLUtils.Mode mode) throws Exception {
+        this.fillClassByValuesInLastRealTimeReadingRecord();
+        long computedCRC = this.computeCRC32();
+        long originalCRC = this.CRC;
+        if(computedCRC != originalCRC){
+            throw new Exception(String.format("%s table %s test is not passed.", TableStrings.TABLE_NAME, mode));
         }
     }
 
     private Integer getLastStoredReadingId() {
-        if (lastStoredReadingId == null) {
-            lastStoredReadingId = GeneralUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
-        }
-        return lastStoredReadingId;
+        return SQLUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
         final int lastStoredReadingId = getLastStoredReadingId();
-        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
-    }
-
-    public long getComputedCRC() throws IOException {
-        return computeCRC32();
+        return SQLUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
     private int computeAlarm() {
@@ -53,7 +54,7 @@ public class RealTimeReadingTable {
          * PROJECTED_HIGH_GLUCOSE(4),
          * HIGH_GLUCOSE(5);
          */
-        double bg = libreMessage.getCurrentBgObject().convertBG(GlucoseUnit.MMOL).getBG();
+        double bg = libreMessage.getCurrentBg().convertBG(GlucoseUnit.MMOL).getBG();
         if (bg < 3.9) {
             return 1;
         } else if (bg > 10.0) {
@@ -85,18 +86,18 @@ public class RealTimeReadingTable {
         return crc32.getValue();
     }
 
-    public void addLastSensorScan() throws IOException {
+    public void addLastSensorScan() throws Exception {
         this.alarm = this.computeAlarm();
-        this.glucoseValue = libreMessage.getCurrentBgObject().convertBG(GlucoseUnit.MGDL).getBG();
+        this.glucoseValue = libreMessage.getCurrentBg().convertBG(GlucoseUnit.MGDL).getBG();
         this.isActionable = true;
         this.rateOfChange = 0.0;
         this.readingId = this.getLastStoredReadingId() + 1;
-        this.sensorId = GeneralUtils.computeSensorId(this.db);
+        this.sensorId = SQLUtils.computeSensorId(this.db);
         this.timeChangeBefore = 0;
-        this.timeZone = libreMessage.getCurrentBgObject().getTimeZone();
-        this.timestampLocal = libreMessage.getCurrentBgObject().getTimestampLocal();
-        this.timestampUTC = libreMessage.getCurrentBgObject().getTimestampUTC();
-        this.trendArrow = libreMessage.getCurrentBgObject().getCurrentTrend().toValue();
+        this.timeZone = libreMessage.getCurrentBg().getTimeZone();
+        this.timestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
+        this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
+        this.trendArrow = libreMessage.getCurrentBg().getCurrentTrend().toValue();
         long computedCRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();
@@ -114,7 +115,40 @@ public class RealTimeReadingTable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insert(TableStrings.TABLE_NAME, null, values);
+        this.onTableChanged();
+    }
+
+    private void onTableChanged() throws Exception {
         sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
+        this.testReadingOrWriting(SQLUtils.Mode.WRITING);
+    }
+
+    public void fillClassByValuesInLastRealTimeReadingRecord() {
+        // That constructor for AppTester.java only
+
+        this.alarm = ((Long) this.getRelatedValueForLastReadingId(TableStrings.alarm)).intValue();
+
+        this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
+
+        this.isActionable = (long) this.getRelatedValueForLastReadingId(TableStrings.isActionable) != 0;
+
+        this.rateOfChange = ((Float) this.getRelatedValueForLastReadingId(TableStrings.rateOfChange)).doubleValue();
+
+        this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
+
+        this.sensorId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId)).intValue();
+
+        this.timeChangeBefore = (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
+
+        this.timeZone = (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
+
+        this.timestampUTC = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
+
+        this.timestampLocal = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
+
+        this.trendArrow = ((Long) this.getRelatedValueForLastReadingId(TableStrings.trendArrow)).intValue();
+
+        this.CRC = (long) this.getRelatedValueForLastReadingId(TableStrings.CRC);
     }
 
     private int alarm;
@@ -129,84 +163,21 @@ public class RealTimeReadingTable {
     private long timestampUTC;
     private int trendArrow;
 
-private static class TableStrings {
-    final static String TABLE_NAME = "RealTimeReadings";
-    final static String alarm = "alarm";
-    final static String glucoseValue = "glucoseValue";
-    final static String isActionable = "isActionable";
-    final static String rateOfChange = "rateOfChange";
-    final static String readingId = "ReadingId";
-    final static String sensorId = "sensorId";
-    final static String timeChangeBefore = "timeChangeBefore";
-    final static String timeZone = "timeZone";
-    final static String timestampLocal = "timestampLocal";
-    final static String timestampUTC = "timestampUTC";
-    final static String trendArrow = "trendArrow";
-    final static String CRC = "CRC";
-}
+    private long CRC;
 
-    private int getAlarm() {
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.alarm);
-        return l.intValue();
-    }
-
-    private double getGlucoseValue() {
-        Float f = (Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue);
-        return f.doubleValue();
-    }
-
-    private boolean getIsActionable() {
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.isActionable) != 0;
-    }
-
-    private double getRateOfChange() {
-        Float f = (Float) this.getRelatedValueForLastReadingId(TableStrings.rateOfChange);
-        return f.doubleValue();
-    }
-
-    private int getReadingId() {
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.readingId);
-        return l.intValue();
-    }
-
-    private int getSensorId() {
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId);
-        return l.intValue();
-    }
-
-    private long getTimeChangeBefore() {
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
-    }
-
-    private String getTimeZone() {
-        return (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
-    }
-
-    private long getTimestampLocal() {
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
-    }
-
-    private long getTimestampUTC() {
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
-    }
-
-    private int getTrendArrow() {
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.trendArrow);
-        return l.intValue();
-    }
-
-    public void fillClassByValuesInLastRealTimeReadingRecord() {
-        // That constructor for AppTester.java only
-        this.alarm = getAlarm();
-        this.glucoseValue = getGlucoseValue();
-        this.isActionable = getIsActionable();
-        this.rateOfChange = getRateOfChange();
-        this.readingId = getReadingId();
-        this.sensorId = getSensorId();
-        this.timeChangeBefore = getTimeChangeBefore();
-        this.timeZone = getTimeZone();
-        this.timestampUTC = getTimestampUTC();
-        this.timestampLocal = getTimestampLocal();
-        this.trendArrow = getTrendArrow();
+    private static class TableStrings {
+        final static String TABLE_NAME = "RealTimeReadings";
+        final static String alarm = "alarm";
+        final static String glucoseValue = "glucoseValue";
+        final static String isActionable = "isActionable";
+        final static String rateOfChange = "rateOfChange";
+        final static String readingId = "ReadingId";
+        final static String sensorId = "sensorId";
+        final static String timeChangeBefore = "timeChangeBefore";
+        final static String timeZone = "timeZone";
+        final static String timestampLocal = "timestampLocal";
+        final static String timestampUTC = "timestampUTC";
+        final static String trendArrow = "trendArrow";
+        final static String CRC = "CRC";
     }
 }

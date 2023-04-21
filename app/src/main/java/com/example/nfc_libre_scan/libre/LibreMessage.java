@@ -1,24 +1,27 @@
 package com.example.nfc_libre_scan.libre;
 
+import android.content.Context;
+
+import com.oop1.AlgorithmRunner;
 import com.oop1.CurrentBg;
 import com.oop1.HistoricBg;
+import com.oop1.LibreSavedState;
 import com.oop1.OOPResults;
 
+import java.util.stream.Stream;
+
 public class LibreMessage {
-    private final byte[] patchUID;
-    private final byte[] patchInfo;
-    private final byte[] payload;
 
-    public byte[] getPatchUID() {
-        return this.patchUID;
+    private final RawLibreData rawLibreData;
+
+    public RawLibreData getRawLibreData() {
+        return rawLibreData;
     }
 
-    public byte[] getPatchInfo() {
-        return this.patchInfo;
-    }
+    private final LibreSavedState libreSavedState;
 
-    public byte[] getPayload() {
-        return this.payload;
+    public LibreSavedState getLibreSavedState() {
+        return libreSavedState;
     }
 
     private final String libreSN;
@@ -27,44 +30,57 @@ public class LibreMessage {
         return libreSN;
     }
 
-    private final OOPResults oopResults;
+    private final CurrentBg currentBg;
+
+    public CurrentBg getCurrentBg() {
+        return currentBg;
+    }
+
+    private final HistoricBg[] historicBgs;
+
+    public HistoricBg[] getHistoricBgs() {
+        return historicBgs;
+    }
+
 
     public enum MessageLockingStatus {UNLOCKED, SENSOR_NOT_ACTIVATED, SENSOR_STARTING, SENSOR_EXPIRED, SENSOR_FAILURE, SENSOR_UNKNOWN_STATUS, MESSAGE_ALREADY_SENT}
 
     private MessageLockingStatus lockingStatus = MessageLockingStatus.UNLOCKED;
 
-    public MessageLockingStatus getLockingStatus(){ return lockingStatus; }
+    public MessageLockingStatus getLockingStatus() {
+        return lockingStatus;
+    }
 
     public void lockForSending(MessageLockingStatus reason) {
-        if(lockingStatus == MessageLockingStatus.UNLOCKED){
+        if (lockingStatus == MessageLockingStatus.UNLOCKED) {
             this.lockingStatus = reason;
         }
     }
 
-    public CurrentBg getCurrentBgObject() {
-        return oopResults.getCurrentBgObject();
+    public static LibreMessage getInstance(Context context, RawLibreData rawLibreData) throws Exception {
+        byte[] patchUID = rawLibreData.getPatchUID();
+        String libreSN = PatchUID.decodeSerialNumber(patchUID);
+        OOPResults oopResults = AlgorithmRunner.RunAlgorithm(context, rawLibreData, libreSN, false);
+        LibreSavedState libreSavedState = oopResults.getLibreSavedState();
+        return new LibreMessage(rawLibreData, libreSavedState, libreSN, oopResults);
+
     }
 
-    public HistoricBg[] getHistoricBgArray() {
-        return oopResults.getHistoricBgArray();
-    }
-
-    public LibreMessage(RawLibreData rawLibreData, String libreSN, OOPResults oopResults) throws Exception {
-        this.patchUID = rawLibreData.getPatchUID();
-        this.patchInfo = rawLibreData.getPatchInfo();
-        this.payload = rawLibreData.getPayload();
+    private LibreMessage(RawLibreData rawLibreData, LibreSavedState libreSavedState, String libreSN, OOPResults oopResults) throws Exception {
+        this.rawLibreData = rawLibreData;
+        this.libreSavedState = libreSavedState;
         this.libreSN = libreSN;
-        this.oopResults = oopResults;
-
-        if (patchUID == null
-                || patchInfo == null
-                || payload == null
+        this.currentBg = oopResults.getCurrentBg();
+        this.historicBgs = oopResults.getHistoricBgs();
+        if (!RawLibreData.verify(rawLibreData)
+                || libreSavedState == null
                 || libreSN == null
-                || oopResults == null) {
+                || currentBg == null
+                || historicBgs == null) {
             throw new Exception("LibreMessage is not valid.");
         }
 
-        byte sensorStatus = payload[4];
+        byte sensorStatus = rawLibreData.getPayload()[4];
 
         switch (sensorStatus) {
             case 0x01:

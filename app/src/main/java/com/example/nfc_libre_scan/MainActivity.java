@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
     private LibreMessage libreMessage;
     private GlucoseUnit glucoseUnit = GlucoseUnit.MMOL;
 
+    // TODO: Интерфейс активити: сделать поля порта сервера и количество минут рандомизации отправки сервиса.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,16 +35,6 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
 
         logTextView = this.findViewById(R.id.logTextView);
         Logger.setLoggerListener(this);
-
-        AppTester appTester = new AppTester(this);
-        boolean testsPassed = appTester.runTests();
-        if (testsPassed) {
-            Logger.ok("Tests passed!");
-        }
-        if (!testsPassed) {
-            Logger.error("Tests failed! Exiting.");
-            return;
-        }
 
         LibreNFC libreNFC = new LibreNFC(this);
         libreNFC.listenSensor();
@@ -85,11 +76,11 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         CurrentBg currentBgObject;
         HistoricBg[] historicBgArray;
         try {
-            currentBgObject = libreMessage.getCurrentBgObject().convertBG(this.glucoseUnit);
+            currentBgObject = libreMessage.getCurrentBg().convertBG(this.glucoseUnit);
             double currentBG = currentBgObject.getBG();
             String trend = currentBgObject.getCurrentTrend().toString();
             String glucoseUnit = currentBgObject.getGlucoseUnit().getString();
-            historicBgArray = libreMessage.getHistoricBgArray();
+            historicBgArray = libreMessage.getHistoricBgs();
 
             String localTime = currentBgObject.getSensorTimeAsLocalTime().format(dtf);
 

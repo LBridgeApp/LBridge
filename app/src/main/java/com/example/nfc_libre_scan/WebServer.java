@@ -2,12 +2,10 @@ package com.example.nfc_libre_scan;
 
 import android.content.Context;
 
-import com.example.nfc_libre_scan.libre.Libre;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.libre.RawLibreData;
 import com.google.gson.Gson;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,9 +48,8 @@ class WebServer extends NanoHTTPD {
                     final String json = map.get("postData");
 
                     RawLibreData rawLibreData = new Gson().fromJson(json, RawLibreData.class);
-                    Libre libre = new Libre(context, rawLibreData);
 
-                    LibreMessage libreMessage = libre.getLibreMessage();
+                    LibreMessage libreMessage = LibreMessage.getInstance(context, rawLibreData);
 
                     Logger.ok("LibreMessage received from server.");
 

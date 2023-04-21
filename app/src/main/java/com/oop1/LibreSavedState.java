@@ -2,8 +2,21 @@ package com.oop1;
 
 /* loaded from: classes.dex */
 public class LibreSavedState {
-    public byte[] attenuationState;
-    public byte[] compositeState;
+    private final byte[] attenuationState;
+    private final byte[] compositeState;
+
+    LibreSavedState(byte[] attenuationState, byte[] compositeState){
+        this.attenuationState = attenuationState;
+        this.compositeState = compositeState;
+    }
+
+    public byte[] getAttenuationState() {
+        return attenuationState;
+    }
+
+    public byte[] getCompositeState() {
+        return compositeState;
+    }
 
     public String toS() {
         String s;

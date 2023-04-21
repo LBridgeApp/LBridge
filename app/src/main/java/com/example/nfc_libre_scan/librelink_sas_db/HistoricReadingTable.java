@@ -18,29 +18,35 @@ public class HistoricReadingTable {
 
     private final LibreMessage libreMessage;
     private final SqliteSequence sqlseq;
-    private Integer lastStoredReadingId;
 
     public HistoricReadingTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.libreMessage = libreMessage;
         this.sqlseq = new SqliteSequence(db);
-        if(GeneralUtils.isTableNull(db, TableStrings.TABLE_NAME)){
-            throw new Exception("Table is null");
+        if(SQLUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
+        }
+
+        // TODO: почему-то в LibreLink не отображается график истории
+        this.testReadingOrWriting(SQLUtils.Mode.READING);
+    }
+    private void testReadingOrWriting(SQLUtils.Mode mode) throws Exception {
+        this.fillClassByValuesInLastHistoricReadingRecord();
+        long computedCRC = this.computeCRC32();
+        long originalCRC = this.CRC;
+        if(computedCRC != originalCRC){
+            throw new Exception(String.format("%s table %s test is not passed.", TableStrings.TABLE_NAME, mode));
         }
     }
 
-    private Integer getLastStoredReadingId() {
-        if(lastStoredReadingId == null){
-            lastStoredReadingId = GeneralUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
-        }
-        return lastStoredReadingId;
+    private Integer getLastStoredReadingId(){
+        return SQLUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
     }
+
     private Object getRelatedValueForLastReadingId(String fieldName) {
-        final int lastStoredReadingId = getLastStoredReadingId();
-        return GeneralUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
+        final Integer lastStoredReadingId = getLastStoredReadingId();
+        return SQLUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
-
-    public long getComputedCRC() throws IOException { return computeCRC32(); }
 
     private long computeCRC32() throws IOException {
         CRC32 crc32 = new CRC32();
@@ -60,10 +66,10 @@ public class HistoricReadingTable {
         return crc32.getValue();
     }
 
-    public void addLastSensorScan() throws IOException {
-        int lastStoredSampleNumber = this.getSampleNumber();
-        int lastStoredReadingId = this.getReadingId();
-        HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgArray())
+    public void addLastSensorScan() throws Exception {
+        int lastStoredSampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
+        int lastStoredReadingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
+        HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgs())
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
                 .toArray(HistoricBg[]::new);
 
@@ -72,11 +78,11 @@ public class HistoricReadingTable {
         }
     }
 
-    private void addNewRecord(HistoricBg historicBg, int readingId) throws IOException {
+    private void addNewRecord(HistoricBg historicBg, int readingId) throws Exception {
         this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         this.readingId = readingId;
         this.sampleNumber = historicBg.getSampleNumber();
-        this.sensorId = GeneralUtils.computeSensorId(this.db);
+        this.sensorId = SQLUtils.computeSensorId(this.db);
         this.timeChangeBefore = 0;
         this.timeZone = historicBg.getTimeZone();
         this.timestampLocal = historicBg.getTimestampLocal();
@@ -94,8 +100,27 @@ public class HistoricReadingTable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insert(TableStrings.TABLE_NAME, null, values);
-        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
+        this.onTableChanged();
     }
+
+    private void onTableChanged() throws Exception {
+        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
+        this.testReadingOrWriting(SQLUtils.Mode.WRITING);
+    }
+
+    public void fillClassByValuesInLastHistoricReadingRecord() {
+        // That constructor for AppTester.java only
+        this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
+        this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
+        this.sampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
+        this.sensorId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId)).intValue();
+        this.timeChangeBefore = (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
+        this.timeZone = (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
+        this.timestampUTC = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
+        this.timestampLocal = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
+        this.CRC = (long) this.getRelatedValueForLastReadingId(TableStrings.CRC);
+    }
+
     private double glucoseValue;
     private int readingId;
     private int sampleNumber;
@@ -105,41 +130,7 @@ public class HistoricReadingTable {
     private long timestampLocal;
     private long timestampUTC;
 
-    private double getGlucoseValue(){
-        Float f = (Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue);
-        return f.doubleValue();
-    }
-
-    private int getReadingId(){
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.readingId);
-        return l.intValue();
-    }
-
-    private int getSampleNumber(){
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber);
-        return l.intValue();
-    }
-
-    private int getSensorId(){
-        Long l = (Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId);
-        return l.intValue();
-    }
-
-    private long getTimeChangeBefore(){
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
-    }
-
-    private String getTimeZone(){
-        return (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
-    }
-
-    private long getTimestampLocal(){
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
-    }
-
-    private long getTimestampUTC(){
-        return (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
-    }
+    private long CRC;
 
     private static class TableStrings{
         final static String TABLE_NAME = "historicReadings";
@@ -152,17 +143,5 @@ public class HistoricReadingTable {
         final static String timestampLocal = "timestampLocal";
         final static String timestampUTC = "timestampUTC";
         final static String CRC = "CRC";
-    }
-
-    public void fillClassByValuesInLastHistoricReadingRecord() {
-        // That constructor for AppTester.java only
-        this.glucoseValue = getGlucoseValue();
-        this.readingId = getReadingId();
-        this.sampleNumber = getSampleNumber();
-        this.sensorId = getSensorId();
-        this.timeChangeBefore = getTimeChangeBefore();
-        this.timeZone = getTimeZone();
-        this.timestampUTC = getTimestampUTC();
-        this.timestampLocal = getTimestampLocal();
     }
 }

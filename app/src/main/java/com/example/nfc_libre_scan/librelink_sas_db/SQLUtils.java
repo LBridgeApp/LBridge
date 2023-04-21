@@ -1,10 +1,10 @@
 package com.example.nfc_libre_scan.librelink_sas_db;
 
 import android.database.Cursor;
-import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 
-public class GeneralUtils {
+public class SQLUtils {
+    enum Mode{ READING, WRITING }
 
     protected static Integer getLastStoredFieldValue(SQLiteDatabase db, String fieldName, String tableName) {
         String sql = String.format("SELECT %s FROM %s ORDER BY %s ASC LIMIT 1 OFFSET (SELECT COUNT(*) FROM %s)-1;", fieldName, tableName, fieldName, tableName);
@@ -16,7 +16,7 @@ public class GeneralUtils {
         return null;
     }
 
-    protected static Object getRelatedValue(SQLiteDatabase db, String fieldName, String tableName, String whereFieldName, int whereCellValue) {
+    protected static Object getRelatedValue(SQLiteDatabase db, String fieldName, String tableName, String whereFieldName, Integer whereCellValue) {
         String sql = String.format("SELECT %s FROM %s WHERE %s=%s;", fieldName, tableName, whereFieldName, whereCellValue);
         Cursor cursor = db.rawQuery(sql, null);
         cursor.moveToFirst();
