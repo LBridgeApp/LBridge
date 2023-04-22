@@ -11,10 +11,10 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
-class WebServer extends NanoHTTPD {
+class WebServer extends NanoHTTPD implements LibreMessageProvider {
     private final Context context;
-    public static final int port = 4545;
-    private OnLibreMessageListener listener;
+    private LibreMessageListener listener;
+
     public WebServer(Context context, String hostname, int port) {
         super(hostname, port);
         this.context = context;
@@ -53,7 +53,7 @@ class WebServer extends NanoHTTPD {
 
                     Logger.ok("LibreMessage received from server.");
 
-                    listener.onLibreMessageReceived(libreMessage);
+                    listener.libreMessageReceived(libreMessage);
                     return this.OK();
                 } catch (Exception e) {
                     return this.INTERNAL_SERVER_ERROR();
@@ -77,8 +77,8 @@ class WebServer extends NanoHTTPD {
         String msg = "404 NOT FOUND";
         return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, msg);
     }
-
-    public void setLibreMessageListener(OnLibreMessageListener listener){
+    @Override
+    public void setLibreMessageListener(LibreMessageListener listener){
         this.listener = listener;
     }
 }

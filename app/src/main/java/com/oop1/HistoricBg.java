@@ -36,11 +36,11 @@ public class HistoricBg {
     }
 
     public long getTimestampUTC(){
-        return this.scanUnixTimestamp;
+        return this.scanUnixTimestamp + (this.historicSensorTime - this.currentSensorTime) * 60 * 1_000L;
     }
 
     public long getTimestampLocal() {
-        return Utils.getUtcTimestampAsLocal(scanUnixTimestamp);
+        return Utils.getUtcTimestampAsLocal(this.getTimestampUTC());
     }
 
     public String getTimeZone() {
@@ -56,10 +56,7 @@ public class HistoricBg {
     }
 
     public ZonedDateTime getSensorTimeAsUTC() {
-        //oOPResults.timestamp + (historicBg.time - oOPResults.currentTime) * 60000;
-        long sensorTimeUnix = this.scanUnixTimestamp + (this.historicSensorTime - this.currentSensorTime) * 60 * 1_000L;
-
-        return Instant.ofEpochMilli(sensorTimeUnix)
+        return Instant.ofEpochMilli(this.getTimestampUTC())
                 .atZone(ZoneId.of("UTC"));
     }
 

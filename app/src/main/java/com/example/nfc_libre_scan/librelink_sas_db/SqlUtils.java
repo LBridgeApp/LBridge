@@ -3,7 +3,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-public class SQLUtils {
+public class SqlUtils {
     enum Mode{ READING, WRITING }
 
     protected static Integer getLastStoredFieldValue(SQLiteDatabase db, String fieldName, String tableName) {
@@ -34,15 +34,13 @@ public class SQLUtils {
         return data;
     }
 
-    protected static Integer computeSensorId(SQLiteDatabase db) {
-        String sql = "SELECT sensorId FROM sensors ORDER BY sensorId ASC LIMIT 1 OFFSET (SELECT COUNT(*) FROM sensors)-1;";
-        Cursor cursor = db.rawQuery(sql, null);
-        Integer sensorId = null;
-        if (cursor.moveToFirst()) {
-            sensorId = cursor.getInt(0);
+    protected static void testReadingOrWriting(CRCable crCable, SqlUtils.Mode mode) throws Exception {
+        crCable.fillClassRelatedToLastFieldValueRecord();
+        long computedCRC = crCable.computeCRC32();
+        long originalCRC = crCable.getOriginalCRC();
+        if(computedCRC != originalCRC){
+            throw new Exception(String.format("%s table %s test is not passed.", crCable.getTableName(), mode));
         }
-        cursor.close();
-        return sensorId;
     }
 
     protected static boolean isTableNull(SQLiteDatabase db, String tableName){

@@ -11,38 +11,31 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class RealTimeReadingTable {
+public class RealTimeReadingTable implements CRCable {
     private final SQLiteDatabase db;
-
+    private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
     private final SqliteSequence sqlseq;
 
-    public RealTimeReadingTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
+    public RealTimeReadingTable(SQLiteDatabase db, SensorTable sensorTable, LibreMessage libreMessage) throws Exception {
         this.db = db;
+        this.sensorTable = sensorTable;
         this.libreMessage = libreMessage;
         sqlseq = new SqliteSequence(db);
-        if(SQLUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+        if(SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)){
             throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
         }
 
-        this.testReadingOrWriting(SQLUtils.Mode.READING);
-    }
-    private void testReadingOrWriting(SQLUtils.Mode mode) throws Exception {
-        this.fillClassByValuesInLastRealTimeReadingRecord();
-        long computedCRC = this.computeCRC32();
-        long originalCRC = this.CRC;
-        if(computedCRC != originalCRC){
-            throw new Exception(String.format("%s table %s test is not passed.", TableStrings.TABLE_NAME, mode));
-        }
+        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.READING);
     }
 
     private Integer getLastStoredReadingId() {
-        return SQLUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
         final int lastStoredReadingId = getLastStoredReadingId();
-        return SQLUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
+        return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
     private int computeAlarm() {
@@ -65,7 +58,18 @@ public class RealTimeReadingTable {
     }
 
 
-    private long computeCRC32() throws IOException {
+    @Override
+    public void fillClassRelatedToLastFieldValueRecord() {
+        this.fillClassByValuesInLastRealTimeReadingRecord();
+    }
+
+    @Override
+    public String getTableName() {
+        return TableStrings.TABLE_NAME;
+    }
+
+    @Override
+    public long computeCRC32() throws IOException {
         CRC32 crc32 = new CRC32();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -86,13 +90,18 @@ public class RealTimeReadingTable {
         return crc32.getValue();
     }
 
+    @Override
+    public long getOriginalCRC() {
+        return this.CRC;
+    }
+
     public void addLastSensorScan() throws Exception {
         this.alarm = this.computeAlarm();
         this.glucoseValue = libreMessage.getCurrentBg().convertBG(GlucoseUnit.MGDL).getBG();
         this.isActionable = true;
         this.rateOfChange = 0.0;
         this.readingId = this.getLastStoredReadingId() + 1;
-        this.sensorId = SQLUtils.computeSensorId(this.db);
+        this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
         this.timestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
@@ -114,13 +123,13 @@ public class RealTimeReadingTable {
         values.put(TableStrings.trendArrow, trendArrow);
         values.put(TableStrings.CRC, computedCRC);
 
-        db.insert(TableStrings.TABLE_NAME, null, values);
+        db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
 
     private void onTableChanged() throws Exception {
         sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
-        this.testReadingOrWriting(SQLUtils.Mode.WRITING);
+        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.WRITING);
     }
 
     public void fillClassByValuesInLastRealTimeReadingRecord() {

@@ -2,6 +2,7 @@ package com.example.nfc_libre_scan.librelink_sas_db;
 
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
 
@@ -12,7 +13,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
 
-public class SensorTable {
+public class SensorTable implements CRCable {
 
     private final SQLiteDatabase db;
     private final LibreMessage libreMessage;
@@ -20,20 +21,11 @@ public class SensorTable {
     public SensorTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.libreMessage = libreMessage;
-        if(SQLUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+        if(SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)){
             throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
         }
 
-        this.testReadingOrWriting(SQLUtils.Mode.READING);
-    }
-
-    private void testReadingOrWriting(SQLUtils.Mode mode) throws Exception {
-        this.fillClassByValuesInLastSensorRecord();
-        long computedCRC = this.computeCRC32();
-        long originalCRC = this.CRC;
-        if(computedCRC != originalCRC){
-            throw new Exception(String.format("%s table %s test is not passed.", TableStrings.TABLE_NAME, mode));
-        }
+        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.READING);
     }
 
     public boolean isSensorExpired(){
@@ -42,13 +34,13 @@ public class SensorTable {
         return diffDays >= 14;
     }
 
-    private Integer getLastStoredSensorId() {
-        return SQLUtils.getLastStoredFieldValue(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
+    protected Integer getLastStoredSensorId() {
+        return SqlUtils.getLastStoredFieldValue(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastSensorId(String fieldName) {
         final int lastStoredSensorId = getLastStoredSensorId();
-        return SQLUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
+        return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
     }
 
     public void updateToLastScan() throws Exception {
@@ -61,25 +53,49 @@ public class SensorTable {
         this.lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
         long computedCRC = this.computeCRC32();
 
-        final String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=%s, %s=%s, %s=%s WHERE %s=%s;",
+        String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=?, %s=?, %s=%s WHERE %s=%s;",
                 TableStrings.TABLE_NAME,
                 TableStrings.lastScanSampleNumber, lastScanSampleNumber,
                 TableStrings.lastScanTimeZone, DatabaseUtils.sqlEscapeString(lastScanTimeZone),
                 TableStrings.lastScanTimestampLocal, lastScanTimestampLocal,
                 TableStrings.lastScanTimestampUTC, lastScanTimestampUTC,
-                TableStrings.sensorId, this.sensorId,
-                TableStrings.attenuationState, DatabaseUtils.sqlEscapeString(Arrays.toString(this.attenuationState)),
-                TableStrings.compositeState, DatabaseUtils.sqlEscapeString(Arrays.toString(this.compositeState)),
-                TableStrings.CRC, computedCRC);
-        db.execSQL(sql);
+                TableStrings.attenuationState,
+                TableStrings.compositeState,
+                TableStrings.CRC, computedCRC,
+                TableStrings.sensorId, this.sensorId);
+
+        SQLiteStatement statement = db.compileStatement(sql);
+        if (attenuationState == null || attenuationState.length == 0) {
+            statement.bindNull(1);
+        } else {
+            statement.bindBlob(1, attenuationState);
+        }
+        if (compositeState == null || compositeState.length == 0) {
+            statement.bindNull(2);
+        } else {
+            statement.bindBlob(2, compositeState);
+        }
+        statement.execute();
+
         this.onTableChanged();
     }
 
     private void onTableChanged() throws Exception {
-        this.testReadingOrWriting(SQLUtils.Mode.WRITING);
+        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.WRITING);
     }
 
-    private long computeCRC32() throws IOException {
+    @Override
+    public void fillClassRelatedToLastFieldValueRecord() {
+        this.fillClassByValuesInLastSensorRecord();
+    }
+
+    @Override
+    public String getTableName() {
+        return TableStrings.TABLE_NAME;
+    }
+
+    @Override
+    public long computeCRC32() throws IOException {
         CRC32 crc32 = new CRC32();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -128,6 +144,11 @@ public class SensorTable {
         dataOutputStream.flush();
         crc32.update(byteArrayOutputStream.toByteArray());
         return crc32.getValue();
+    }
+
+    @Override
+    public long getOriginalCRC() {
+        return this.CRC;
     }
 
     public void fillClassByValuesInLastSensorRecord() {

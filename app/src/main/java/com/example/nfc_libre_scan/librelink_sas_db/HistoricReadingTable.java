@@ -13,42 +13,45 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.zip.CRC32;
 
-public class HistoricReadingTable {
+public class HistoricReadingTable implements CRCable {
     private final SQLiteDatabase db;
-
+    private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
     private final SqliteSequence sqlseq;
 
-    public HistoricReadingTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
+    public HistoricReadingTable(SQLiteDatabase db, SensorTable sensorTable, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.libreMessage = libreMessage;
+        this.sensorTable = sensorTable;
         this.sqlseq = new SqliteSequence(db);
-        if(SQLUtils.isTableNull(db, TableStrings.TABLE_NAME)){
+        if (SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)) {
             throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
         }
 
-        // TODO: почему-то в LibreLink не отображается график истории
-        this.testReadingOrWriting(SQLUtils.Mode.READING);
-    }
-    private void testReadingOrWriting(SQLUtils.Mode mode) throws Exception {
-        this.fillClassByValuesInLastHistoricReadingRecord();
-        long computedCRC = this.computeCRC32();
-        long originalCRC = this.CRC;
-        if(computedCRC != originalCRC){
-            throw new Exception(String.format("%s table %s test is not passed.", TableStrings.TABLE_NAME, mode));
-        }
+        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.READING);
     }
 
-    private Integer getLastStoredReadingId(){
-        return SQLUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
+    private Integer getLastStoredReadingId() {
+        return SqlUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
         final Integer lastStoredReadingId = getLastStoredReadingId();
-        return SQLUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
+        return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
-    private long computeCRC32() throws IOException {
+    @Override
+    public void fillClassRelatedToLastFieldValueRecord() {
+        this.fillClassByValuesInLastHistoricReadingRecord();
+    }
+
+    @Override
+    public String getTableName() {
+        return TableStrings.TABLE_NAME;
+    }
+
+    @Override
+    public long computeCRC32() throws IOException {
         CRC32 crc32 = new CRC32();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -66,6 +69,11 @@ public class HistoricReadingTable {
         return crc32.getValue();
     }
 
+    @Override
+    public long getOriginalCRC() {
+        return this.CRC;
+    }
+
     public void addLastSensorScan() throws Exception {
         int lastStoredSampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
         int lastStoredReadingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
@@ -73,16 +81,17 @@ public class HistoricReadingTable {
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
                 .toArray(HistoricBg[]::new);
 
-        for (HistoricBg missedHistoricBg : missingHistoricBgs){
+        for (HistoricBg missedHistoricBg : missingHistoricBgs) {
             this.addNewRecord(missedHistoricBg, ++lastStoredReadingId);
         }
     }
 
     private void addNewRecord(HistoricBg historicBg, int readingId) throws Exception {
+        this.fillClassByValuesInLastHistoricReadingRecord();
         this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         this.readingId = readingId;
         this.sampleNumber = historicBg.getSampleNumber();
-        this.sensorId = SQLUtils.computeSensorId(this.db);
+        this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = historicBg.getTimeZone();
         this.timestampLocal = historicBg.getTimestampLocal();
@@ -91,7 +100,8 @@ public class HistoricReadingTable {
 
         ContentValues values = new ContentValues();
         values.put(TableStrings.glucoseValue, glucoseValue);
-        values.put(TableStrings.readingId, readingId);
+        values.put(TableStrings.readingId, this.readingId);
+        values.put(TableStrings.sampleNumber, this.sampleNumber);
         values.put(TableStrings.sensorId, sensorId);
         values.put(TableStrings.timeChangeBefore, timeChangeBefore);
         values.put(TableStrings.timeZone, timeZone);
@@ -99,17 +109,17 @@ public class HistoricReadingTable {
         values.put(TableStrings.timestampLocal, timestampLocal);
         values.put(TableStrings.CRC, computedCRC);
 
-        db.insert(TableStrings.TABLE_NAME, null, values);
+        db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
 
     private void onTableChanged() throws Exception {
         sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
-        this.testReadingOrWriting(SQLUtils.Mode.WRITING);
+        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.WRITING);
     }
 
     public void fillClassByValuesInLastHistoricReadingRecord() {
-        // That constructor for AppTester.java only
+
         this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
         this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
         this.sampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
@@ -129,10 +139,9 @@ public class HistoricReadingTable {
     private String timeZone;
     private long timestampLocal;
     private long timestampUTC;
-
     private long CRC;
 
-    private static class TableStrings{
+    private static class TableStrings {
         final static String TABLE_NAME = "historicReadings";
         final static String glucoseValue = "glucoseValue";
         final static String readingId = "readingId";

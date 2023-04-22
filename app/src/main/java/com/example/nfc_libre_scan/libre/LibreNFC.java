@@ -7,11 +7,11 @@ import android.nfc.TagLostException;
 import android.nfc.tech.NfcV;
 import android.os.Bundle;
 
+import com.example.nfc_libre_scan.LibreLink;
+import com.example.nfc_libre_scan.LibreMessageProvider;
 import com.example.nfc_libre_scan.Logger;
-import com.example.nfc_libre_scan.OnLibreMessageListener;
+import com.example.nfc_libre_scan.LibreMessageListener;
 import com.example.nfc_libre_scan.Vibrator;
-import com.oop1.AlgorithmRunner;
-import com.oop1.OOPResults;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,10 +19,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-public class LibreNFC implements NfcAdapter.ReaderCallback {
+public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider {
     private final Activity activity;
     private NfcV nfcVTag;
-    private final List<OnLibreMessageListener> listeners = new ArrayList<>();
+    private final List<LibreMessageListener> listeners = new ArrayList<>();
 
     public LibreNFC(Activity activity) {
         this.activity = activity;
@@ -65,20 +65,22 @@ public class LibreNFC implements NfcAdapter.ReaderCallback {
             long timestamp = System.currentTimeMillis();
             RawLibreData rawLibreData = new RawLibreData(patchUID, patchInfo, payload, timestamp);
             LibreMessage libreMessage = LibreMessage.getInstance(activity, rawLibreData);
-            listeners.forEach(l -> l.onLibreMessageReceived(libreMessage));
+            listeners.forEach(l -> l.libreMessageReceived(libreMessage));
             Vibrator.SCAN_SUCCESS.vibrate(activity);
 
         } catch (Exception e) {
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
             Vibrator.SCAN_ERROR.vibrate(activity);
         } finally {
             Logger.ok("NfcV tag closed");
         }
     }
 
-    public void setLibreListener(OnLibreMessageListener listener) {
+    @Override
+    public void setLibreMessageListener(LibreMessageListener listener) {
         this.listeners.add(listener);
     }
+
     protected byte[] runCmd(byte[] cmd) throws IOException, InterruptedException {
         long time = System.currentTimeMillis();
         byte[] response = null;
@@ -113,7 +115,9 @@ public class LibreNFC implements NfcAdapter.ReaderCallback {
         // Нужно отбросить первый нулевой байт
         patchInfo = Arrays.copyOfRange(patchInfo, 1, patchInfo.length);
         //Logger.ok("PatchInfo retrieved.");
-        if(patchInfo.length != 6){ throw new Exception("PatchInfo is not valid."); }
+        if (patchInfo.length != 6) {
+            throw new Exception("PatchInfo is not valid.");
+        }
         return patchInfo;
     }
 
@@ -135,7 +139,7 @@ public class LibreNFC implements NfcAdapter.ReaderCallback {
         payload = Arrays.copyOfRange(payload, 0, Payload.payloadBytesLength);
 
         boolean payloadIsValid = Payload.verify(payload);
-        if(!payloadIsValid){
+        if (!payloadIsValid) {
             throw new Exception("Payload is not valid.");
         }
         return payload;

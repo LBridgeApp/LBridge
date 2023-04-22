@@ -9,21 +9,18 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.view.View;
 
-import com.example.nfc_libre_scan.libre.LibreNFC;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink_sas_db.HistoricReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink_sas_db.SensorTable;
 
-import java.io.IOException;
 import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
+public class LibreLink implements LibreMessageListener, View.OnClickListener {
     @SuppressLint("SdCardPath")
     private static final String librelink_sas_db_path = "/data/data/com.freestylelibre.app.ru/files/sas.db";
     @SuppressLint("SdCardPath")
@@ -36,19 +33,13 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
 
     private LocalDateTime nextSentTime = LocalDateTime.now();
 
-    LibreLink(Context context) {
+    public LibreLink(Context context) {
         this.context = context;
         this.rootLib = new RootLib(context);
         this.ourDbPath = context.getDatabasePath("sas.db").getAbsolutePath();
     }
 
-    public void listenLibreMessages(LibreNFC libreNFC) {
-        libreNFC.setLibreListener(this);
-    }
-
-    public void listenLibreMessages(WebServer server){
-        server.setLibreMessageListener(this);
-    }
+    public void listenLibreMessages(LibreMessageProvider provider){ provider.setLibreMessageListener(this); }
 
     @Override
     public void onClick(View v) {
@@ -85,7 +76,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             Logger.ok("db to our app copied");
         } catch (Exception e) {
             Logger.error("Failed to copy db to our app");
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
             return;
         }
 
@@ -94,7 +85,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             Logger.ok("Permission 666 set to db in our app");
         } catch (Exception e) {
             Logger.error("Failed to set 666 permission to db in our app");
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
             return;
         }
 
@@ -104,7 +95,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             libreMessage.lockForSending(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_SENT);
         } catch (Exception e) {
             Logger.error("Failed to edit db in our app");
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
             return;
         }
 
@@ -113,7 +104,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             Logger.ok("edited db to librelink app copied!");
         } catch (Exception e) {
             Logger.error("Failed to copy db to librelink app");
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
             return;
         }
 
@@ -122,7 +113,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
             Logger.ok("permission 660 set to db in librelink app");
         } catch (Exception e) {
             Logger.error("Failed to set 660 permission to db in librelink app");
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
             return;
         }
         startLibreLink();
@@ -168,10 +159,10 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         RealTimeReadingTable realTimeReadingTable;
         HistoricReadingTable historicReadingTable;
         try {
-            rawScanTable = new RawScanTable(db, libreMessage);
             sensorTable = new SensorTable(db, libreMessage);
-            realTimeReadingTable = new RealTimeReadingTable(db, libreMessage);
-            historicReadingTable = new HistoricReadingTable(db, libreMessage);
+            rawScanTable = new RawScanTable(db, sensorTable, libreMessage);
+            realTimeReadingTable = new RealTimeReadingTable(db, sensorTable, libreMessage);
+            historicReadingTable = new HistoricReadingTable(db, sensorTable, libreMessage);
         } catch (Exception ignored) {
             throw new Exception("Scan the sensor in LibreLink until glucose appears.");
         }
@@ -186,7 +177,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
         db.beginTransaction();
 
         sensorTable.updateToLastScan();
-        rawScanTable.addNewSensorScan();
+        rawScanTable.addLastSensorScan();
         realTimeReadingTable.addLastSensorScan();
         historicReadingTable.addLastSensorScan();
 
@@ -200,7 +191,7 @@ public class LibreLink implements OnLibreMessageListener, View.OnClickListener {
     }
 
     @Override
-    public void onLibreMessageReceived(LibreMessage libreMessage) {
+    public void libreMessageReceived(LibreMessage libreMessage) {
         Logger.ok("New LibreMessage received.");
         this.libreMessage = libreMessage;
 

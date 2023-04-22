@@ -95,9 +95,11 @@ public class RootLib {
     }
 
     private void onRootNeeded() throws Exception {
-        boolean rootGranted = this.requestRoot();
-        if(!rootGranted){
-            throw new Exception("Root is not granted.");
+        if(rootedProcess == null || !rootedProcess.isAlive()){
+            boolean rootGranted = this.requestRoot();
+            if(!rootGranted){
+                throw new Exception("Root is not granted.");
+            }
         }
     }
 }

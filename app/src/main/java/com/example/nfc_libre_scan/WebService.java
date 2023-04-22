@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -15,6 +16,9 @@ import android.os.IBinder;
 
 import androidx.core.app.NotificationCompat;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.util.List;
 
 public class WebService extends Service {
@@ -34,6 +38,7 @@ public class WebService extends Service {
     private NotificationCompat.Builder notificationBuilder;
     private WebServer server;
     private LibreLink libreLink;
+    private int serverPort;
 
     @Override
     public void onCreate() {
@@ -45,24 +50,52 @@ public class WebService extends Service {
         this.notificationManager = getSystemService(NotificationManager.class);
         this.connectivityManager = this.getSystemService(ConnectivityManager.class);
         this.notificationBuilder = getNotificationBuilder();
+        this.libreLink = new LibreLink(this);
         this.setNetworkListener();
-        libreLink = new LibreLink(this);
+    }
+
+    private Integer getSavedOrFindFreePort(int minPort, int maxPort) throws Exception {
+        int savedPort = readSavedPort();
+        int port = (savedPort >= minPort && savedPort <= maxPort) ? savedPort : minPort;
+
+        for (int p = port; p <= maxPort; p++) {
+            try (ServerSocket socket = new ServerSocket()) {
+                socket.bind(new InetSocketAddress(p));
+                this.saveGeneratedPort(p);
+                return p;
+            } catch (IOException ignored) {
+            }
+        }
+        throw new Exception("Could not find free ports.");
+    }
+
+    private int readSavedPort() {
+        SharedPreferences preferences = this.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
+        return preferences.getInt("ServerPort", -1);
+    }
+
+    private void saveGeneratedPort(int value) {
+        SharedPreferences preferences = this.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("ServerPort", value);
+        editor.apply();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(1, notificationBuilder.build());
 
-        server = new WebServer(this,null, WebServer.port);
         try {
+        serverPort = getSavedOrFindFreePort(1024, 65535);
+        server = new WebServer(this, null, serverPort);
             server.start();
             Logger.ok("Web server started.");
+            libreLink.listenLibreMessages(server);
         } catch (Exception e) {
             Logger.error("Failed to start web server.");
-            Logger.error(e.getLocalizedMessage());
+            Logger.error(e.getMessage());
+            this.stopSelf();
         }
-
-        libreLink.listenLibreMessages(server);
         return START_STICKY;
     }
 
@@ -107,73 +140,67 @@ public class WebService extends Service {
                 new NetworkRequest.Builder()
                         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                         .build();
-        connectivityManager.registerNetworkCallback(request, new NetworkCallback(notificationManager, notificationBuilder, connectivityManager, WebServer.port));
+        connectivityManager.registerNetworkCallback(request, new NetworkCallback(this));
     }
 
     static class NetworkCallback extends ConnectivityManager.NetworkCallback {
-        private final ConnectivityManager connectivityManager;
-        private final NotificationCompat.Builder notificationBuilder;
-        private final NotificationManager notificationManager;
-        private final int serverPort;
+        private final WebService caller;
 
-        NetworkCallback(NotificationManager notificationManager, NotificationCompat.Builder notificationBuilder, ConnectivityManager connectivityManager, int serverPort) {
-            this.connectivityManager = connectivityManager;
-            this.notificationBuilder = notificationBuilder;
-            this.notificationManager = notificationManager;
-            this.serverPort = serverPort;
+        NetworkCallback(WebService caller) {
+            this.caller = caller;
         }
 
         public void onAvailable(Network network) {
-            this.changeNotification();
+            caller.changeNotification();
         }
 
         public void onLosing(Network network, int maxMsToLive) {
-            this.changeNotification();
+            caller.changeNotification();
         }
 
         public void onLost(Network network) {
-            this.changeNotification();
+            caller.changeNotification();
         }
 
         public void onUnavailable() {
-            this.changeNotification();
+            caller.changeNotification();
         }
 
         public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
-            this.changeNotification();
+            caller.changeNotification();
         }
 
         public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
-            this.changeNotification();
+            caller.changeNotification();
         }
 
         public void onBlockedStatusChanged(Network network, boolean blocked) {
-            this.changeNotification();
+            caller.changeNotification();
         }
+    }
 
-        private void changeNotification() {
-            String text = String.format("Where to send libreMessages:\n" +
-                    "Port: %s\n" +
-                    "Phone network: localhost ( 127.0.0.1 )\n" +
-                    "Another networks:\n%s\n", serverPort, getIPs());
-            notificationBuilder.setContentText(text);
-            notificationManager.notify(1, notificationBuilder.build());
-        }
+    private void changeNotification() {
+        String text = String.format("Where to send libreMessages:\n" +
+                "Port: %s\n" +
+                "Phone network: localhost ( 127.0.0.1 )\n" +
+                "Another networks:\n%s\n", serverPort, getIPs());
+        notificationBuilder.setContentText(text);
+        notificationManager.notify(1, notificationBuilder.build());
+    }
 
-        private String getIPs() {
-            Network activeNetwork = connectivityManager.getActiveNetwork();
-            List<LinkAddress> addresses;
-            StringBuilder sb = new StringBuilder();
-            if (activeNetwork != null) {
-                addresses = connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getLinkAddresses();
-                int counter = 0;
-                for (LinkAddress address : addresses) {
-                    sb.append(String.format("#%s: %s\n", ++counter, address.getAddress().getHostAddress()));
-                }
-                return sb.toString();
+    private String getIPs() {
+        Network activeNetwork = connectivityManager.getActiveNetwork();
+        List<LinkAddress> addresses;
+        StringBuilder sb = new StringBuilder();
+        if (activeNetwork != null) {
+            addresses = connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork()).getLinkAddresses();
+            int counter = 0;
+            for (LinkAddress address : addresses) {
+                sb.append(String.format("#%s: %s\n", ++counter, address.getAddress().getHostAddress()));
             }
-            return "Not available";
+            return sb.toString();
         }
+        return "Not available";
     }
 
     @Override

@@ -2,13 +2,11 @@ package com.example.nfc_libre_scan;
 
 import android.util.Log;
 
-import java.util.Locale;
-
 public class Logger {
     private Logger(){}
-    private static OnLogListener logListener;
+    private static LogListener logListener;
     private static final String TAG = "LibreTools";
-    public static void setLoggerListener(OnLogListener listener){
+    public static void setLoggerListener(LogListener listener){
         logListener = listener;
     }
 
@@ -17,7 +15,7 @@ public class Logger {
         String finalLog = String.format("[INF] %s", log);
         Log.i(TAG, finalLog);
         if(logListener != null){
-            logListener.onLogReceived(finalLog);
+            logListener.logReceived(finalLog);
         }
     }
 
@@ -25,7 +23,7 @@ public class Logger {
         String finalLog = String.format("[OK] %s", log);
         Log.i(TAG, finalLog);
         if(logListener != null){
-            logListener.onLogReceived(finalLog);
+            logListener.logReceived(finalLog);
         }
     }
 
@@ -33,7 +31,7 @@ public class Logger {
         String finalLog = String.format("[ERR] %s", log);
         Log.e(TAG, finalLog);
         if(logListener != null){
-            logListener.onLogReceived(finalLog);
+            logListener.logReceived(finalLog);
         }
     }
 }

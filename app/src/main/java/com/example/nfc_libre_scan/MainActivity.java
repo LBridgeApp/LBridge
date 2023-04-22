@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements OnLibreMessageListener, RadioGroup.OnCheckedChangeListener, OnLogListener {
+public class MainActivity extends AppCompatActivity implements LibreMessageListener, RadioGroup.OnCheckedChangeListener, LogListener {
     private TextView currentBgView;
     private TextView bgHistoryView;
     private TextView logTextView;
@@ -38,10 +38,7 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
 
         LibreNFC libreNFC = new LibreNFC(this);
         libreNFC.listenSensor();
-        libreNFC.setLibreListener(this);
-
-        LibreLink libreLink = new LibreLink(this);
-        libreLink.listenLibreMessages(libreNFC);
+        libreNFC.setLibreMessageListener(this);
 
         currentBgView = this.findViewById(R.id.currentBgView);
         bgHistoryView = this.findViewById(R.id.bgHistoryView);
@@ -49,6 +46,8 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
         Button sugarAddingBtn = this.findViewById(R.id.sugarAddingBtn);
         Button databaseRemovingBtn = this.findViewById(R.id.removeLibrelinkDB);
 
+        LibreLink libreLink = new LibreLink(this);
+        libreLink.listenLibreMessages(libreNFC);
         sugarAddingBtn.setOnClickListener(libreLink);
         databaseRemovingBtn.setOnClickListener(libreLink);
 
@@ -100,12 +99,12 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
             this.runOnUiThread(() -> this.bgHistoryView.setText(historicBgBuilder));
 
         } catch (Exception e) {
-            Logger.error(Objects.requireNonNull(e.getLocalizedMessage()));
+            Logger.error(Objects.requireNonNull(e.getMessage()));
         }
     }
 
     @Override
-    public void onLibreMessageReceived(LibreMessage message) {
+    public void libreMessageReceived(LibreMessage message) {
         this.libreMessage = message;
         this.showBG();
     }
@@ -122,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements OnLibreMessageLis
     }
 
     @Override
-    public void onLogReceived(String log) {
+    public void logReceived(String log) {
         this.runOnUiThread(() -> logTextView.append("\n" + log + "\n"));
     }
 }
