@@ -1,24 +1,9 @@
 package com.oop1;
-
-import android.content.Context;
-import android.util.Log;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Date;
-import java.util.Formatter;
-
-/* loaded from: classes.dex */
 public class Utils {
     public static long getUtcTimestampAsLocal(long timestampUTC){
         // Метод toEpochMilli не учитывает временную зону.

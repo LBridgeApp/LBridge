@@ -1,4 +1,4 @@
-package com.example.nfc_libre_scan.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.database.Cursor;
 import android.database.DatabaseUtils;

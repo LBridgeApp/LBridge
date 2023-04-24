@@ -13,7 +13,7 @@ public class RootLib {
 
     private Process rootedProcess;
 
-    RootLib(Context context) {
+    public RootLib(Context context) {
         // Context is not needed for that library.
         // But it is needed for starting from service or activity only.
     }
@@ -66,7 +66,8 @@ public class RootLib {
             out.flush();
             String result = br.readLine();
             return result.contains(okMsg);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            Logger.error(e);
         }
 
         return false;
@@ -89,7 +90,8 @@ public class RootLib {
                 this.rootedProcess = process;
                 return true;
             }
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            Logger.error(e);
         }
         return false;
     }

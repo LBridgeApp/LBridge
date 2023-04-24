@@ -1,16 +1,27 @@
 package com.example.nfc_libre_scan.libre;
 
+import com.example.nfc_libre_scan.Logger;
+
 import java.util.Arrays;
 
 public class Payload {
 
     private Payload(){}
+
+    public static int getSensorTimeInMinutes(byte[] payload){
+        return 256 * (payload[317] & 0xFF) + (payload[316] & 0xFF);
+    }
+
+    public static byte getSensorStatus(byte[] payload){
+        return payload[4];
+    }
+
     public static final int payloadBytesLength = 344;
 
     public static boolean verify(byte[] payload){
         // Continue for libre1,2 checks
         if (payload == null || payload.length < payloadBytesLength) {
-            //logger.error("Must have at least 344 bytes for libre data");
+            Logger.error("Payload must have at least 344 bytes for libre data");
             return false;
         }
         // Проверка диапазона 0 - 343 байтов одной операцией не работает.

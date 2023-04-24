@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import com.example.nfc_libre_scan.libre.LibreNFC;
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink.LibreLink;
 import com.oop1.CurrentBg;
 import com.oop1.GlucoseUnit;
 import com.oop1.HistoricBg;
@@ -17,7 +18,6 @@ import com.oop1.HistoricBg;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
-import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements LibreMessageListener, RadioGroup.OnCheckedChangeListener, LogListener {
     private TextView currentBgView;
@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         glucoseUnitRadioGroup.setOnCheckedChangeListener(this);
 
         WebService.startService(this);
+
     }
 
     private void showBG() {
@@ -99,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
             this.runOnUiThread(() -> this.bgHistoryView.setText(historicBgBuilder));
 
         } catch (Exception e) {
-            Logger.error(Objects.requireNonNull(e.getMessage()));
+            Logger.error(e);
         }
     }
 

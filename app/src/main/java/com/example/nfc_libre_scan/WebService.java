@@ -13,8 +13,11 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+
+import com.example.nfc_libre_scan.librelink.LibreLink;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -24,13 +27,15 @@ import java.util.List;
 public class WebService extends Service {
     private static boolean webServiceIsRunning = false;
 
+    // TODO: реализовать подключение к сервису.
     public static void startService(Context context) {
         if (!WebService.webServiceIsRunning) {
             Intent intent = new Intent(context, WebService.class);
             context.startForegroundService(intent);
             Logger.ok("WebService started");
+        } else {
+            Logger.error("WebService already running.");
         }
-        Logger.error("WebService already running.");
     }
 
     private NotificationManager notificationManager;
@@ -48,52 +53,24 @@ public class WebService extends Service {
 
         WebService.webServiceIsRunning = true;
         this.notificationManager = getSystemService(NotificationManager.class);
-        this.connectivityManager = this.getSystemService(ConnectivityManager.class);
         this.notificationBuilder = getNotificationBuilder();
+        this.connectivityManager = this.getSystemService(ConnectivityManager.class);
         this.libreLink = new LibreLink(this);
         this.setNetworkListener();
-    }
-
-    private Integer getSavedOrFindFreePort(int minPort, int maxPort) throws Exception {
-        int savedPort = readSavedPort();
-        int port = (savedPort >= minPort && savedPort <= maxPort) ? savedPort : minPort;
-
-        for (int p = port; p <= maxPort; p++) {
-            try (ServerSocket socket = new ServerSocket()) {
-                socket.bind(new InetSocketAddress(p));
-                this.saveGeneratedPort(p);
-                return p;
-            } catch (IOException ignored) {
-            }
-        }
-        throw new Exception("Could not find free ports.");
-    }
-
-    private int readSavedPort() {
-        SharedPreferences preferences = this.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
-        return preferences.getInt("ServerPort", -1);
-    }
-
-    private void saveGeneratedPort(int value) {
-        SharedPreferences preferences = this.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("ServerPort", value);
-        editor.apply();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(1, notificationBuilder.build());
-
         try {
-        serverPort = getSavedOrFindFreePort(1024, 65535);
-        server = new WebServer(this, null, serverPort);
+            serverPort = getSavedOrFindFreePort(1024, 65535);
+            server = new WebServer(this, null, serverPort);
             server.start();
             Logger.ok("Web server started.");
+            this.changeNotification();
             libreLink.listenLibreMessages(server);
         } catch (Exception e) {
-            Logger.error("Failed to start web server.");
-            Logger.error(e.getMessage());
+            Logger.error(e);
             this.stopSelf();
         }
         return START_STICKY;
@@ -107,6 +84,45 @@ public class WebService extends Service {
         Logger.ok("Web server stopped.");
         WebService.webServiceIsRunning = false;
         super.onDestroy();
+    }
+
+    private Integer getSavedOrFindFreePort(int minPort, int maxPort) throws Exception {
+        int savedPort = readSavedPort();
+        savedPort = (savedPort >= minPort && savedPort <= maxPort) ? savedPort : minPort;
+        if (isPortAvailable(savedPort)) {
+            return savedPort;
+        }
+
+        for (int p = minPort; p <= maxPort; p++) {
+            if (isPortAvailable(p)) {
+                this.saveGeneratedPort(p);
+                return p;
+            }
+        }
+        throw new Exception("Could not find free ports.");
+    }
+
+
+    private boolean isPortAvailable(int port) {
+        try (ServerSocket socket = new ServerSocket()) {
+            socket.bind(new InetSocketAddress(port));
+            return true;
+        } catch (IOException e) {
+            Logger.error(e);
+            return false;
+        }
+    }
+
+    private int readSavedPort() {
+        SharedPreferences preferences = this.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
+        return preferences.getInt("ServerPort", -1);
+    }
+
+    private void saveGeneratedPort(int value) {
+        SharedPreferences preferences = this.getSharedPreferences("my_prefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("ServerPort", value);
+        editor.apply();
     }
 
     private NotificationChannel createNotificationChannel() {
@@ -126,7 +142,7 @@ public class WebService extends Service {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
                 .setContentTitle("LibreTools")
-                .setContentText("Server IP address detection...")
+                .setContentText("Server is starting...")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setStyle(bigTextStyle);
@@ -180,7 +196,7 @@ public class WebService extends Service {
     }
 
     private void changeNotification() {
-        String text = String.format("Where to send libreMessages:\n" +
+        String text = String.format("Server is working:\n" +
                 "Port: %s\n" +
                 "Phone network: localhost ( 127.0.0.1 )\n" +
                 "Another networks:\n%s\n", serverPort, getIPs());

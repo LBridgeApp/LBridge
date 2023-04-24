@@ -1,4 +1,4 @@
-package com.example.nfc_libre_scan.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -21,25 +21,29 @@ public class SqlUtils {
         Cursor cursor = db.rawQuery(sql, null);
         cursor.moveToFirst();
         Object data = null;
-        if (cursor.getType(0) == Cursor.FIELD_TYPE_INTEGER) {
-            data = cursor.getLong(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_FLOAT) {
-            data = cursor.getFloat(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_STRING) {
-            data = cursor.getString(0);
-        } else if (cursor.getType(0) == Cursor.FIELD_TYPE_BLOB) {
-            data = cursor.getBlob(0);
+        if(cursor.moveToFirst()){
+            if (cursor.getType(0) == Cursor.FIELD_TYPE_INTEGER) {
+                data = cursor.getLong(0);
+            } else if (cursor.getType(0) == Cursor.FIELD_TYPE_FLOAT) {
+                data = cursor.getFloat(0);
+            } else if (cursor.getType(0) == Cursor.FIELD_TYPE_STRING) {
+                data = cursor.getString(0);
+            } else if (cursor.getType(0) == Cursor.FIELD_TYPE_BLOB) {
+                data = cursor.getBlob(0);
+            }
         }
         cursor.close();
         return data;
     }
 
-    protected static void testReadingOrWriting(CRCable crCable, SqlUtils.Mode mode) throws Exception {
-        crCable.fillClassRelatedToLastFieldValueRecord();
-        long computedCRC = crCable.computeCRC32();
-        long originalCRC = crCable.getOriginalCRC();
-        if(computedCRC != originalCRC){
-            throw new Exception(String.format("%s table %s test is not passed.", crCable.getTableName(), mode));
+    protected static void validateCrcAlgorithm(CrcTable table, SqlUtils.Mode mode) throws Exception {
+        if(!table.isTableNull()){
+            table.fillByLastRecord();
+            long computedCRC = table.computeCRC32();
+            long originalCRC = table.getOriginalCRC();
+            if(computedCRC != originalCRC){
+                throw new Exception(String.format("%s table %s test is not passed.", table.getTableName(), mode));
+            }
         }
     }
 

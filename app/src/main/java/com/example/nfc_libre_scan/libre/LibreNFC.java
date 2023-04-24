@@ -7,7 +7,6 @@ import android.nfc.TagLostException;
 import android.nfc.tech.NfcV;
 import android.os.Bundle;
 
-import com.example.nfc_libre_scan.LibreLink;
 import com.example.nfc_libre_scan.LibreMessageProvider;
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.LibreMessageListener;
@@ -17,7 +16,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider {
     private final Activity activity;
@@ -49,14 +47,13 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
 
     @Override
     public void onTagDiscovered(Tag tag) {
-        Logger.inf("\n----------------\n");
-        Logger.ok("NfcV tag discovered");
+        Logger.ok("Libre tag discovered");
         Vibrator.SCAN_START.vibrate(activity);
         try (NfcV nfcVTag = NfcV.get(tag)) {
             this.nfcVTag = nfcVTag;
             if (!nfcVTag.isConnected()) {
                 nfcVTag.connect();
-                Logger.ok("NfcV tag connected");
+                Logger.ok("Libre tag connected");
             }
 
             byte[] patchUID = this.queryPatchUID();
@@ -69,10 +66,10 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
             Vibrator.SCAN_SUCCESS.vibrate(activity);
 
         } catch (Exception e) {
-            Logger.error(Objects.requireNonNull(e.getMessage()));
+            Logger.error(e);
             Vibrator.SCAN_ERROR.vibrate(activity);
         } finally {
-            Logger.ok("NfcV tag closed");
+            Logger.ok("Libre tag closed");
         }
     }
 
@@ -102,6 +99,7 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
     }
 
     private byte[] queryPatchUID() {
+        // Столбец uniqueIdentifier в таблице sensors - это patchUID
         return nfcVTag.getTag().getId();
     }
 

@@ -56,6 +56,7 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
                     listener.libreMessageReceived(libreMessage);
                     return this.OK();
                 } catch (Exception e) {
+                    Logger.error(e);
                     return this.INTERNAL_SERVER_ERROR();
                 }
             }

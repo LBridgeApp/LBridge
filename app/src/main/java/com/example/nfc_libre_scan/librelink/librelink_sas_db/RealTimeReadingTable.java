@@ -1,4 +1,4 @@
-package com.example.nfc_libre_scan.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
@@ -11,7 +11,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class RealTimeReadingTable implements CRCable {
+public class RealTimeReadingTable implements CrcTable {
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
@@ -22,11 +22,8 @@ public class RealTimeReadingTable implements CRCable {
         this.sensorTable = sensorTable;
         this.libreMessage = libreMessage;
         sqlseq = new SqliteSequence(db);
-        if(SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)){
-            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
-        }
 
-        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.READING);
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
 
     private Integer getLastStoredReadingId() {
@@ -59,8 +56,19 @@ public class RealTimeReadingTable implements CRCable {
 
 
     @Override
-    public void fillClassRelatedToLastFieldValueRecord() {
-        this.fillClassByValuesInLastRealTimeReadingRecord();
+    public void fillByLastRecord() {
+        this.alarm = ((Long) this.getRelatedValueForLastReadingId(TableStrings.alarm)).intValue();
+        this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
+        this.isActionable = (long) this.getRelatedValueForLastReadingId(TableStrings.isActionable) != 0;
+        this.rateOfChange = ((Float) this.getRelatedValueForLastReadingId(TableStrings.rateOfChange)).doubleValue();
+        this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
+        this.sensorId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId)).intValue();
+        this.timeChangeBefore = (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
+        this.timeZone = (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
+        this.timestampUTC = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
+        this.timestampLocal = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
+        this.trendArrow = ((Long) this.getRelatedValueForLastReadingId(TableStrings.trendArrow)).intValue();
+        this.CRC = (long) this.getRelatedValueForLastReadingId(TableStrings.CRC);
     }
 
     @Override
@@ -95,12 +103,17 @@ public class RealTimeReadingTable implements CRCable {
         return this.CRC;
     }
 
+    @Override
+    public boolean isTableNull() {
+        return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
+    }
+
     public void addLastSensorScan() throws Exception {
         this.alarm = this.computeAlarm();
         this.glucoseValue = libreMessage.getCurrentBg().convertBG(GlucoseUnit.MGDL).getBG();
         this.isActionable = true;
         this.rateOfChange = 0.0;
-        this.readingId = this.getLastStoredReadingId() + 1;
+        this.readingId = (this.getLastStoredReadingId() == null) ? 1 : this.getLastStoredReadingId() + 1;
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
@@ -124,40 +137,12 @@ public class RealTimeReadingTable implements CRCable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        this.onTableChanged();
+        this.triggerOnTableChangedEvent();
     }
 
-    private void onTableChanged() throws Exception {
+    private void triggerOnTableChangedEvent() throws Exception {
         sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
-        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.WRITING);
-    }
-
-    public void fillClassByValuesInLastRealTimeReadingRecord() {
-        // That constructor for AppTester.java only
-
-        this.alarm = ((Long) this.getRelatedValueForLastReadingId(TableStrings.alarm)).intValue();
-
-        this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
-
-        this.isActionable = (long) this.getRelatedValueForLastReadingId(TableStrings.isActionable) != 0;
-
-        this.rateOfChange = ((Float) this.getRelatedValueForLastReadingId(TableStrings.rateOfChange)).doubleValue();
-
-        this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
-
-        this.sensorId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId)).intValue();
-
-        this.timeChangeBefore = (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
-
-        this.timeZone = (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
-
-        this.timestampUTC = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
-
-        this.timestampLocal = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
-
-        this.trendArrow = ((Long) this.getRelatedValueForLastReadingId(TableStrings.trendArrow)).intValue();
-
-        this.CRC = (long) this.getRelatedValueForLastReadingId(TableStrings.CRC);
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 
     private int alarm;

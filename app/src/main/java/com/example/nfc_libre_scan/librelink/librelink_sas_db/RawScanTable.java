@@ -1,4 +1,4 @@
-package com.example.nfc_libre_scan.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
@@ -10,7 +10,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class RawScanTable implements CRCable {
+public class RawScanTable implements CrcTable {
     private final SqliteSequence sqlseq;
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
@@ -21,11 +21,8 @@ public class RawScanTable implements CRCable {
         this.sensorTable = sensorTable;
         this.libreMessage = libreMessage;
         this.sqlseq = new SqliteSequence(db);
-        if(SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)){
-            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
-        }
 
-        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.READING);
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
 
     private Integer getLastStoredScanId() {
@@ -37,8 +34,15 @@ public class RawScanTable implements CRCable {
     }
 
     @Override
-    public void fillClassRelatedToLastFieldValueRecord() {
-        this.fillClassByValuesInLastRawScanRecord();
+    public void fillByLastRecord() {
+        this.patchInfo = (byte[]) this.getRelatedValueForLastScanId(TableStrings.patchInfo);
+        this.payload = (byte[]) this.getRelatedValueForLastScanId(TableStrings.payload);
+        this.scanId = ((Long) this.getRelatedValueForLastScanId(TableStrings.scanId)).intValue();
+        this.sensorId = ((Long) this.getRelatedValueForLastScanId(TableStrings.sensorId)).intValue();
+        this.timeZone = (String) this.getRelatedValueForLastScanId(TableStrings.timeZone);
+        this.timestampUTC = (long) this.getRelatedValueForLastScanId(TableStrings.timestampUTC);
+        this.timestampLocal = (long) this.getRelatedValueForLastScanId(TableStrings.timestampLocal);
+        this.CRC = (long) this.getRelatedValueForLastScanId(TableStrings.CRC);
     }
 
     @Override
@@ -69,6 +73,11 @@ public class RawScanTable implements CRCable {
         return this.CRC;
     }
 
+    @Override
+    public boolean isTableNull() {
+        return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
+    }
+
     public void addLastSensorScan() throws Exception {
         this.patchInfo = libreMessage.getRawLibreData().getPatchInfo();
         this.payload = libreMessage.getRawLibreData().getPayload();
@@ -90,31 +99,12 @@ public class RawScanTable implements CRCable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        this.onTableChanged();
+        this.triggerOnTableChangedEvent();
     }
 
-    private void onTableChanged() throws Exception {
+    private void triggerOnTableChangedEvent() throws Exception {
         sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
-        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.WRITING);
-    }
-
-    public void fillClassByValuesInLastRawScanRecord() {
-
-        this.patchInfo = (byte[]) this.getRelatedValueForLastScanId(TableStrings.patchInfo);
-
-        this.payload = (byte[]) this.getRelatedValueForLastScanId(TableStrings.payload);
-
-        this.scanId = ((Long) this.getRelatedValueForLastScanId(TableStrings.scanId)).intValue();
-
-        this.sensorId = ((Long) this.getRelatedValueForLastScanId(TableStrings.sensorId)).intValue();
-
-        this.timeZone = (String) this.getRelatedValueForLastScanId(TableStrings.timeZone);
-
-        this.timestampUTC = (long) this.getRelatedValueForLastScanId(TableStrings.timestampUTC);
-
-        this.timestampLocal = (long) this.getRelatedValueForLastScanId(TableStrings.timestampLocal);
-
-        this.CRC = (long) this.getRelatedValueForLastScanId(TableStrings.CRC);
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 
     private byte[] patchInfo;

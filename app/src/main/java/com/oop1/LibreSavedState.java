@@ -1,6 +1,5 @@
 package com.oop1;
 
-/* loaded from: classes.dex */
 public class LibreSavedState {
     private final byte[] attenuationState;
     private final byte[] compositeState;

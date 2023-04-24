@@ -1,0 +1,92 @@
+Настройка связи с LBridge:
+
+1) Нужно добавить этот класс LibreviewBridge.java в xDrip+.
+2) В NFCReaderX.java в методе HandleGoodReading
+добавить строчку new Thread(new LibreviewBridge(patchUid, patchInfo, data1)).start();
+3) Создать файл в каталоге телефона /Xdrip+/libreview_bridge.config, в котором записать ip и порт сервера LBridge.
+
+----------------------------------------------------------------------------------------------------
+
+package com.eveningoutpost.dexdrip;
+import android.os.Environment;
+import android.util.Log;
+import com.google.gson.Gson;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Locale;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+public class LibreviewBridge implements Runnable {
+    private final LibreData libreData;
+    LibreviewBridge(byte[] patchUID, byte[] patchInfo, byte[] payload) {
+        this.libreData = new LibreData(patchUID, patchInfo, payload);
+    }
+
+    private void sendData(String serverUrl, String libreDataJson) {
+        OkHttpClient client = new OkHttpClient();
+        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json"), libreDataJson.getBytes());
+
+        Request request = new Request.Builder()
+                .url(serverUrl)
+                .post(requestBody)
+                .addHeader("Sender", "Xdrip+")
+                .addHeader("MessageTo", "LibreviewBridge")
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            int responseCode = response.code();
+            String logMsg = String.format(Locale.ROOT, "Response code: %d", responseCode);
+            Log.d("LibreviewBridge", logMsg);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    String readServerUrlFile() throws Exception {
+        // считаем, что есть разрешение на чтение, в противном случае приложение упадет.
+        File file = new File(Environment.getExternalStorageDirectory(), "Xdrip+/libreview_bridge.config");
+        FileInputStream inputStream = new FileInputStream(file);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        StringBuilder stringBuilder = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            stringBuilder.append(line);
+        }
+
+        reader.close();
+        inputStream.close();
+
+        return stringBuilder.toString();
+    }
+
+    @Override
+    public void run() {
+        try {
+            String serverUrl = this.readServerUrlFile();
+            String libreDataJson = new Gson().toJson(this.libreData);
+            this.sendData(serverUrl, libreDataJson);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static class LibreData {
+        byte[] patchUID;
+        byte[] patchInfo;
+        byte[] payload;
+        long timestamp;
+        LibreData(byte[] patchUID, byte[] patchInfo, byte[] payload) {
+            this.patchUID = patchUID;
+            this.patchInfo = patchInfo;
+            this.payload = payload;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+}

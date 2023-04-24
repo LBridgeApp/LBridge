@@ -9,6 +9,11 @@
     <color name="white">#FFFFFFFF</color>
 
     <color name="lentach">#432559</color>
-    <color name="lentach_shade1">#3c2150</color>
-    <color name="lentach_shade2">#351d47</color>
+    <color name="lentach_shade1">#3c214f</color>
+    <color name="lentach_shade2">#311b41</color>
+
+    <color name="orangefox">#212121</color>
+    <color name="orangefox_shade1">#1a1a1a</color>
+    <color name="orangefox_shade2">#0f0f0f</color>
+
 </resources>

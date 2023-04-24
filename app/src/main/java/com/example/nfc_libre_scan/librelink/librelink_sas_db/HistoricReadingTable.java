@@ -1,4 +1,4 @@
-package com.example.nfc_libre_scan.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.zip.CRC32;
 
-public class HistoricReadingTable implements CRCable {
+public class HistoricReadingTable implements CrcTable {
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
@@ -24,11 +24,8 @@ public class HistoricReadingTable implements CRCable {
         this.libreMessage = libreMessage;
         this.sensorTable = sensorTable;
         this.sqlseq = new SqliteSequence(db);
-        if (SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)) {
-            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
-        }
 
-        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.READING);
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
 
     private Integer getLastStoredReadingId() {
@@ -41,8 +38,16 @@ public class HistoricReadingTable implements CRCable {
     }
 
     @Override
-    public void fillClassRelatedToLastFieldValueRecord() {
-        this.fillClassByValuesInLastHistoricReadingRecord();
+    public void fillByLastRecord() {
+        this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
+        this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
+        this.sampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
+        this.sensorId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId)).intValue();
+        this.timeChangeBefore = (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
+        this.timeZone = (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
+        this.timestampUTC = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
+        this.timestampLocal = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
+        this.CRC = (long) this.getRelatedValueForLastReadingId(TableStrings.CRC);
     }
 
     @Override
@@ -74,20 +79,25 @@ public class HistoricReadingTable implements CRCable {
         return this.CRC;
     }
 
+    @Override
+    public boolean isTableNull() {
+        return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
+    }
+
     public void addLastSensorScan() throws Exception {
-        int lastStoredSampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
-        int lastStoredReadingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
+        final int lastStoredSampleNumber =  ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber) == null) ? 0 :  ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
+        final int lastStoredReadingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId) == null) ? 0 :  ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();;
+
         HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgs())
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
                 .toArray(HistoricBg[]::new);
 
-        for (HistoricBg missedHistoricBg : missingHistoricBgs) {
-            this.addNewRecord(missedHistoricBg, ++lastStoredReadingId);
+        for (int i = 0; i < missingHistoricBgs.length; i++) {
+            this.addNewRecord(missingHistoricBgs[i], lastStoredReadingId + i + 1);
         }
     }
 
     private void addNewRecord(HistoricBg historicBg, int readingId) throws Exception {
-        this.fillClassByValuesInLastHistoricReadingRecord();
         this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         this.readingId = readingId;
         this.sampleNumber = historicBg.getSampleNumber();
@@ -110,25 +120,12 @@ public class HistoricReadingTable implements CRCable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        this.onTableChanged();
+        this.triggerOnTableChangedEvent();
     }
 
-    private void onTableChanged() throws Exception {
+    private void triggerOnTableChangedEvent() throws Exception {
         sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
-        SqlUtils.testReadingOrWriting(this, SqlUtils.Mode.WRITING);
-    }
-
-    public void fillClassByValuesInLastHistoricReadingRecord() {
-
-        this.glucoseValue = ((Float) this.getRelatedValueForLastReadingId(TableStrings.glucoseValue)).doubleValue();
-        this.readingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();
-        this.sampleNumber = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
-        this.sensorId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.sensorId)).intValue();
-        this.timeChangeBefore = (long) this.getRelatedValueForLastReadingId(TableStrings.timeChangeBefore);
-        this.timeZone = (String) this.getRelatedValueForLastReadingId(TableStrings.timeZone);
-        this.timestampUTC = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
-        this.timestampLocal = (long) this.getRelatedValueForLastReadingId(TableStrings.timestampLocal);
-        this.CRC = (long) this.getRelatedValueForLastReadingId(TableStrings.CRC);
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 
     private double glucoseValue;

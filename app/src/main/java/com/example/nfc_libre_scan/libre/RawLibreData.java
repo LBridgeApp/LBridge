@@ -36,8 +36,8 @@ public class RawLibreData {
     }
 
     public boolean verify() {
-        return (patchUID != null
-                && patchInfo != null
+        return (patchUID != null && patchUID.length == 8
+                && patchInfo != null && patchInfo.length == 6
                 && Payload.verify(payload)
                 && timestamp != 0);
     }
