@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.oop1.AlgorithmRunner;
 import com.oop1.CurrentBg;
+import com.oop1.GlucoseUnit;
 import com.oop1.HistoricBg;
 import com.oop1.LibreSavedState;
 import com.oop1.OOPResults;
@@ -63,7 +64,7 @@ public class LibreMessage {
 
     }
 
-    public void triggerOnMessageSentEvent(){
+    public void triggerOnMessageSentEvent() {
         this.lockForSending(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_SENT);
     }
 
@@ -120,7 +121,8 @@ public class LibreMessage {
                 || libreSN == null
                 || libreSN.length() != 11
                 || currentBg == null
-                || historicBgs == null) {
+                || historicBgs == null
+                || currentBg.convertBG(GlucoseUnit.MMOL).getBG() == 0.0) {
             throw new Exception("LibreMessage is not valid.");
         }
     }

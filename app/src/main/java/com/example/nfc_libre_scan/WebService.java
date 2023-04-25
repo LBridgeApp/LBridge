@@ -55,7 +55,6 @@ public class WebService extends Service {
         this.notificationManager = getSystemService(NotificationManager.class);
         this.notificationBuilder = getNotificationBuilder();
         this.connectivityManager = this.getSystemService(ConnectivityManager.class);
-        this.libreLink = new LibreLink(this);
         this.setNetworkListener();
     }
 
@@ -68,6 +67,7 @@ public class WebService extends Service {
             server.start();
             Logger.ok("Web server started.");
             this.changeNotification();
+            libreLink = new LibreLink(this);
             libreLink.listenLibreMessages(server);
         } catch (Exception e) {
             Logger.error(e);

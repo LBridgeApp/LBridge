@@ -10,4 +10,7 @@
     <string name="mg_dl">mg/dl</string>
     <string name="restart_app">Restart app</string>
     <string name="critical_error_occurred">Critical error occurred</string>
+    <string name="load_logs_from_db">Load logs from db</string>
+    <string name="remove_logs_db">Remove logs db</string>
+    <string name="clear_log_window">Clear log window</string>
 </resources>

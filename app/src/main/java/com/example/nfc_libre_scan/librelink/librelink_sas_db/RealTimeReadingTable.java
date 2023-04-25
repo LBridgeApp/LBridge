@@ -15,13 +15,11 @@ public class RealTimeReadingTable implements CrcTable {
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
-    private final SqliteSequence sqlseq;
 
     public RealTimeReadingTable(SQLiteDatabase db, SensorTable sensorTable, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.sensorTable = sensorTable;
         this.libreMessage = libreMessage;
-        sqlseq = new SqliteSequence(db);
 
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
@@ -31,7 +29,7 @@ public class RealTimeReadingTable implements CrcTable {
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
-        final int lastStoredReadingId = getLastStoredReadingId();
+        final Integer lastStoredReadingId = getLastStoredReadingId();
         return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
@@ -113,7 +111,8 @@ public class RealTimeReadingTable implements CrcTable {
         this.glucoseValue = libreMessage.getCurrentBg().convertBG(GlucoseUnit.MGDL).getBG();
         this.isActionable = true;
         this.rateOfChange = 0.0;
-        this.readingId = (this.getLastStoredReadingId() == null) ? 1 : this.getLastStoredReadingId() + 1;
+        // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
+        //this.readingId = (this.getLastStoredReadingId() == null) ? 1 : this.getLastStoredReadingId() + 1;
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
@@ -127,7 +126,8 @@ public class RealTimeReadingTable implements CrcTable {
         values.put(TableStrings.glucoseValue, glucoseValue);
         values.put(TableStrings.isActionable, isActionable);
         values.put(TableStrings.rateOfChange, rateOfChange);
-        values.put(TableStrings.readingId, readingId);
+        // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
+        //values.put(TableStrings.readingId, readingId);
         values.put(TableStrings.sensorId, sensorId);
         values.put(TableStrings.timeChangeBefore, timeChangeBefore);
         values.put(TableStrings.timeZone, timeZone);
@@ -141,7 +141,6 @@ public class RealTimeReadingTable implements CrcTable {
     }
 
     private void triggerOnTableChangedEvent() throws Exception {
-        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 

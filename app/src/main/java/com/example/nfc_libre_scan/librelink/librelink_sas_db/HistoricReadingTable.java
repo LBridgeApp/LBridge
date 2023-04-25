@@ -17,13 +17,11 @@ public class HistoricReadingTable implements CrcTable {
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
-    private final SqliteSequence sqlseq;
 
     public HistoricReadingTable(SQLiteDatabase db, SensorTable sensorTable, LibreMessage libreMessage) throws Exception {
         this.db = db;
         this.libreMessage = libreMessage;
         this.sensorTable = sensorTable;
-        this.sqlseq = new SqliteSequence(db);
 
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
@@ -85,21 +83,21 @@ public class HistoricReadingTable implements CrcTable {
     }
 
     public void addLastSensorScan() throws Exception {
-        final int lastStoredSampleNumber =  ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber) == null) ? 0 :  ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
-        final int lastStoredReadingId = ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId) == null) ? 0 :  ((Long) this.getRelatedValueForLastReadingId(TableStrings.readingId)).intValue();;
+        final int lastStoredSampleNumber =  (this.getRelatedValueForLastReadingId(TableStrings.sampleNumber) == null) ? 0 : ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
 
         HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgs())
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
                 .toArray(HistoricBg[]::new);
 
-        for (int i = 0; i < missingHistoricBgs.length; i++) {
-            this.addNewRecord(missingHistoricBgs[i], lastStoredReadingId + i + 1);
+        for(HistoricBg missedHistoricBg : missingHistoricBgs){
+            this.addNewRecord(missedHistoricBg);
         }
     }
 
-    private void addNewRecord(HistoricBg historicBg, int readingId) throws Exception {
+    private void addNewRecord(HistoricBg historicBg) throws Exception {
         this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
-        this.readingId = readingId;
+        // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
+        //this.readingId = readingId;
         this.sampleNumber = historicBg.getSampleNumber();
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
@@ -110,7 +108,8 @@ public class HistoricReadingTable implements CrcTable {
 
         ContentValues values = new ContentValues();
         values.put(TableStrings.glucoseValue, glucoseValue);
-        values.put(TableStrings.readingId, this.readingId);
+        // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
+        //values.put(TableStrings.readingId, this.readingId);
         values.put(TableStrings.sampleNumber, this.sampleNumber);
         values.put(TableStrings.sensorId, sensorId);
         values.put(TableStrings.timeChangeBefore, timeChangeBefore);
@@ -124,7 +123,6 @@ public class HistoricReadingTable implements CrcTable {
     }
 
     private void triggerOnTableChangedEvent() throws Exception {
-        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 

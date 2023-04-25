@@ -7,6 +7,29 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
+        <Button
+            android:id="@+id/removeLogsDb"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:text="@string/remove_logs_db" />
+
+        <Button
+            android:id="@+id/loadLogsFromDB"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/removeLogsDb"
+            android:layout_centerHorizontal="true"
+            android:text="@string/load_logs_from_db" />
+
+        <Button
+            android:id="@+id/clearLogWindow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/loadLogsFromDB"
+            android:layout_centerHorizontal="true"
+            android:text="@string/clear_log_window" />
+
         <TextView
             android:id="@+id/logTextView"
             android:layout_width="match_parent"
@@ -14,6 +37,7 @@
             android:layout_margin="16dp"
             android:background="#000000"
             android:padding="16dp"
+            android:layout_below="@+id/clearLogWindow"
             android:text="@string/app_logs_come_here"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />

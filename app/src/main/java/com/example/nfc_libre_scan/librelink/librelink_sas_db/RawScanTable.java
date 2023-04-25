@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.util.zip.CRC32;
 
 public class RawScanTable implements CrcTable {
-    private final SqliteSequence sqlseq;
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
@@ -20,7 +19,6 @@ public class RawScanTable implements CrcTable {
         this.db = db;
         this.sensorTable = sensorTable;
         this.libreMessage = libreMessage;
-        this.sqlseq = new SqliteSequence(db);
 
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
@@ -81,7 +79,8 @@ public class RawScanTable implements CrcTable {
     public void addLastSensorScan() throws Exception {
         this.patchInfo = libreMessage.getRawLibreData().getPatchInfo();
         this.payload = libreMessage.getRawLibreData().getPayload();
-        this.scanId = getLastStoredScanId() + 1;
+        // не нужно менять scanId, так как это значение само увеличивается при добавлении записи.
+        //this.scanId = getLastStoredScanId() + 1;
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
         this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
@@ -91,7 +90,8 @@ public class RawScanTable implements CrcTable {
         ContentValues values = new ContentValues();
         values.put(TableStrings.patchInfo, patchInfo);
         values.put(TableStrings.payload, payload);
-        values.put(TableStrings.scanId, scanId);
+        // не нужно менять scanId, так как это значение само увеличивается при добавлении записи.
+        //values.put(TableStrings.scanId, scanId);
         values.put(TableStrings.sensorId, sensorId);
         values.put(TableStrings.timeZone, timeZone);
         values.put(TableStrings.timestampLocal, timestampLocal);
@@ -103,7 +103,6 @@ public class RawScanTable implements CrcTable {
     }
 
     private void triggerOnTableChangedEvent() throws Exception {
-        sqlseq.onNewRecordMade(TableStrings.TABLE_NAME);
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 

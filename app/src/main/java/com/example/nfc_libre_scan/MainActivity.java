@@ -3,6 +3,7 @@ package com.example.nfc_libre_scan;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -19,11 +20,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements LibreMessageListener, RadioGroup.OnCheckedChangeListener, LogListener {
+public class MainActivity extends AppCompatActivity implements LibreMessageListener, View.OnClickListener, RadioGroup.OnCheckedChangeListener, LogListener {
     private TextView currentBgView;
     private TextView bgHistoryView;
     private TextView logTextView;
     private LibreMessage libreMessage;
+    private LibreLink libreLink;
     private GlucoseUnit glucoseUnit = GlucoseUnit.MMOL;
 
     // TODO: Интерфейс активити: сделать поля порта сервера и количество минут рандомизации отправки сервиса.
@@ -46,10 +48,18 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         Button sugarAddingBtn = this.findViewById(R.id.sugarAddingBtn);
         Button databaseRemovingBtn = this.findViewById(R.id.removeLibrelinkDB);
 
-        LibreLink libreLink = new LibreLink(this);
+        Button loadLogFromDbBtn = this.findViewById(R.id.loadLogsFromDB);
+        Button removeLogDbBtn = this.findViewById(R.id.removeLogsDb);
+        Button clearLogWindowBtn = this.findViewById(R.id.clearLogWindow);
+
+        loadLogFromDbBtn.setOnClickListener(this);
+        removeLogDbBtn.setOnClickListener(this);
+        clearLogWindowBtn.setOnClickListener(this);
+
+        libreLink = new LibreLink(this);
         libreLink.listenLibreMessages(libreNFC);
-        sugarAddingBtn.setOnClickListener(libreLink);
-        databaseRemovingBtn.setOnClickListener(libreLink);
+        sugarAddingBtn.setOnClickListener(this);
+        databaseRemovingBtn.setOnClickListener(this);
 
 
         if (glucoseUnit == GlucoseUnit.MMOL) {
@@ -122,7 +132,39 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
     }
 
     @Override
-    public void logReceived(String log) {
-        this.runOnUiThread(() -> logTextView.append("\n" + log + "\n"));
+    public void logReceived(Logger.LogRecord log) {
+        this.runOnUiThread(() -> logTextView.append("\n" + log.toShortString() + "\n"));
+    }
+
+    @Override
+    public void onClick(View v) {
+        if(v.getId() == R.id.loadLogsFromDB){
+            Logger.LogRecord[] logs = Logger.getLogs();
+            this.runOnUiThread(() -> logTextView.setText(null));
+            for(Logger.LogRecord log : logs){
+                this.runOnUiThread(() -> logTextView.append("\n" + log.toShortString() + "\n"));
+            }
+        }
+        else if(v.getId() == R.id.removeLogsDb){
+            Logger.recreateLogDb();
+            this.runOnUiThread(() -> logTextView.setText(null));
+        }
+        else if(v.getId() == R.id.clearLogWindow){
+            this.runOnUiThread(() -> logTextView.setText(null));
+        }
+        else if (v.getId() == R.id.sugarAddingBtn) {
+            try {
+                libreLink.addLastScanToDatabase();
+            } catch (Exception e) {
+                Logger.error(e);
+            }
+        }
+        else if (v.getId() == R.id.removeLibrelinkDB) {
+            try {
+                libreLink.removeLibreLinkDatabases();
+            } catch (Exception e) {
+                Logger.error(e);
+            }
+        }
     }
 }

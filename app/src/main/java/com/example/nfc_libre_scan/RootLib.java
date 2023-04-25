@@ -69,7 +69,6 @@ public class RootLib {
         } catch (IOException e) {
             Logger.error(e);
         }
-
         return false;
     }
 

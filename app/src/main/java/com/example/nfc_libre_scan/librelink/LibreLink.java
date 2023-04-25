@@ -24,7 +24,7 @@ import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorTable;
 
 import java.util.Timer;
 
-public class LibreLink implements LibreMessageListener, View.OnClickListener {
+public class LibreLink implements LibreMessageListener {
     @SuppressLint("SdCardPath")
     private static final String librelink_sas_db_path = "/data/data/com.freestylelibre.app.ru/files/sas.db";
     @SuppressLint("SdCardPath")
@@ -49,21 +49,7 @@ public class LibreLink implements LibreMessageListener, View.OnClickListener {
         provider.setLibreMessageListener(this);
     }
 
-    @Override
-    public void onClick(View v) {
-        if (v.getId() == R.id.sugarAddingBtn) {
-            try {
-                addLastScanToDatabase();
-            } catch (Exception e) {
-                Logger.error(e);
-            }
-        }
-        if (v.getId() == R.id.removeLibrelinkDB) {
-            removeLibreLinkDatabases();
-        }
-    }
-
-    protected void addLastScanToDatabase() throws Exception {
+    public void addLastScanToDatabase() throws Exception {
 
         if (libreMessage == null) {
             throw new Exception("LibreLink object does not have any libre scans");
@@ -88,15 +74,11 @@ public class LibreLink implements LibreMessageListener, View.OnClickListener {
         startLibreLink();
     }
 
-    public void removeLibreLinkDatabases() {
+    public void removeLibreLinkDatabases() throws Exception {
         killLibreLink();
-        try {
-            rootLib.removeFile(LibreLink.librelink_sas_db_path);
-            rootLib.removeFile(LibreLink.librelink_apollo_db_path);
-            Logger.ok("LibreLink dbs removed");
-        } catch (Exception e) {
-            Logger.error(e);
-        }
+        rootLib.removeFile(LibreLink.librelink_sas_db_path);
+        rootLib.removeFile(LibreLink.librelink_apollo_db_path);
+        Logger.ok("LibreLink dbs removed");
     }
 
     private void startLibreLink() {
