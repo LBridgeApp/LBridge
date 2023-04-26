@@ -28,11 +28,11 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
     private LibreLink libreLink;
     private GlucoseUnit glucoseUnit = GlucoseUnit.MMOL;
 
-    // TODO: Интерфейс активити: сделать поля порта сервера и количество минут рандомизации отправки сервиса.
+    // TODO: Интерфейс активити: сделать количество минут рандомизации отправки сервиса.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Thread.setDefaultUncaughtExceptionHandler(new CriticalErrorHandler(this.getApplicationContext()));
+        new CriticalErrorHandler().setHandler();
         setContentView(R.layout.activity_main);
 
         logTextView = this.findViewById(R.id.logTextView);

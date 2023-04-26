@@ -80,7 +80,6 @@ public class RawScanTable implements CrcTable {
         this.patchInfo = libreMessage.getRawLibreData().getPatchInfo();
         this.payload = libreMessage.getRawLibreData().getPayload();
         // не нужно менять scanId, так как это значение само увеличивается при добавлении записи.
-        //this.scanId = getLastStoredScanId() + 1;
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
         this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
@@ -91,7 +90,6 @@ public class RawScanTable implements CrcTable {
         values.put(TableStrings.patchInfo, patchInfo);
         values.put(TableStrings.payload, payload);
         // не нужно менять scanId, так как это значение само увеличивается при добавлении записи.
-        //values.put(TableStrings.scanId, scanId);
         values.put(TableStrings.sensorId, sensorId);
         values.put(TableStrings.timeZone, timeZone);
         values.put(TableStrings.timestampLocal, timestampLocal);

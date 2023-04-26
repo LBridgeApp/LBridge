@@ -112,7 +112,6 @@ public class RealTimeReadingTable implements CrcTable {
         this.isActionable = true;
         this.rateOfChange = 0.0;
         // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
-        //this.readingId = (this.getLastStoredReadingId() == null) ? 1 : this.getLastStoredReadingId() + 1;
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();

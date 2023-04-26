@@ -1,8 +1,7 @@
 <resources>
     <string name="app_name">LBridge</string>
-    <string name="add_last_scan_to_librelink_db">Add last scan to LibreLink database</string>
-    <string name="remove_librelink_db">Remove LibreLink database</string>
-    <string name="write_last_libre_message_to_file">Write last libreNFC message to file</string>
+    <string name="add_last_scan_to_librelink_db">Add last scan to LibreLink db</string>
+    <string name="remove_librelink_db">Remove LibreLink db</string>
     <string name="historic_bgs_come_here">Historic BGs come here.</string>
     <string name="current_bg_comes_here">Current BG comes here.</string>
     <string name="app_logs_come_here">App logs come here.</string>

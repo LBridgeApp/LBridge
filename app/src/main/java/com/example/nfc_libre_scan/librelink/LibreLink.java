@@ -1,6 +1,7 @@
 package com.example.nfc_libre_scan.librelink;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Service;
 import android.content.ComponentName;
@@ -22,6 +23,7 @@ import com.example.nfc_libre_scan.librelink.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorTable;
 
+import java.util.List;
 import java.util.Timer;
 
 public class LibreLink implements LibreMessageListener {
@@ -88,6 +90,13 @@ public class LibreLink implements LibreMessageListener {
         intent.setComponent(new ComponentName(packageName, activityName));
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
+
+        if (context instanceof Activity) {
+            // убираем перекрытие нашего приложения только что запущенным LibreLink.
+            ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.AppTask> appTasks = activityManager.getAppTasks();
+            appTasks.get(0).moveToFront();
+        }
         Logger.ok("LibreLink started");
     }
 

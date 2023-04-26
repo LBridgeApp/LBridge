@@ -31,17 +31,8 @@ public class CriticalErrorActivity extends AppCompatActivity implements View.OnC
         errorObject.printStackTrace(pw);
         String errorMessage = sw.toString();
 
-        StringBuilder stackTraceBuilder = new StringBuilder();
-        stackTraceBuilder.append(errorObject.getCause()).append("\n");
-        for (StackTraceElement element : errorObject.getStackTrace()) {
-            stackTraceBuilder.append("at\n").append(element.toString()).append("\n");
-        }
-        String stackTraceMessage = stackTraceBuilder.toString();
-
-        String fullErrorMessage = errorMessage + "\n" + "FULL STACK TRACE:\n\n" + stackTraceMessage;
-
         TextView errorTextView = findViewById(R.id.criticalErrorTextView);
-        this.runOnUiThread(() -> errorTextView.setText(fullErrorMessage));
+        this.runOnUiThread(() -> errorTextView.setText(errorMessage));
 
         Button restartButton = this.findViewById(R.id.restartAppButton);
         restartButton.setOnClickListener(this);

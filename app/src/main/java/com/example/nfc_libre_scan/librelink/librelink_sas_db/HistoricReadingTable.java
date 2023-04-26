@@ -97,7 +97,6 @@ public class HistoricReadingTable implements CrcTable {
     private void addNewRecord(HistoricBg historicBg) throws Exception {
         this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
-        //this.readingId = readingId;
         this.sampleNumber = historicBg.getSampleNumber();
         this.sensorId = sensorTable.getLastStoredSensorId();
         this.timeChangeBefore = 0;
@@ -109,7 +108,6 @@ public class HistoricReadingTable implements CrcTable {
         ContentValues values = new ContentValues();
         values.put(TableStrings.glucoseValue, glucoseValue);
         // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
-        //values.put(TableStrings.readingId, this.readingId);
         values.put(TableStrings.sampleNumber, this.sampleNumber);
         values.put(TableStrings.sensorId, sensorId);
         values.put(TableStrings.timeChangeBefore, timeChangeBefore);

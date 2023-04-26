@@ -69,6 +69,26 @@ public class Logger {
         }
     }
 
+    public static void criticalError(String log) {
+        Log.e(TAG, log);
+
+        final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
+        final String status = "CRITICAL_ERROR";
+
+        instance.writeToDatabase(timeUTC, status, log);
+        if (logListener != null) {
+            logListener.logReceived(new LogRecord(timeUTC, status, log));
+        }
+    }
+
+    public static void criticalError(Throwable e){
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw); // to PrintWriter
+        e.printStackTrace(); // to console
+        Logger.criticalError(sw.toString()); // to main activity logger window
+    }
+
     public static void error(Throwable e) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
