@@ -70,7 +70,9 @@ public class PeriodicTimer extends BroadcastReceiver {
     private enum TaskStatus {
         START_TIMER{
             int getNextTaskMinutes(){
-                return 1;
+                // Данные приходят каждые 5 минут.
+                // Отправляем через шесть.
+                return 6;
             }
         },
         SUCCESS {
@@ -81,7 +83,9 @@ public class PeriodicTimer extends BroadcastReceiver {
             }
         }, FAILURE {
             int getNextTaskMinutes() {
-                return 1;
+                // Данные приходят каждые 5 минут.
+                // Отправляем через шесть.
+                return 6;
             }
         };
 
