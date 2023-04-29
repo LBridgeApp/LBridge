@@ -1,9 +1,16 @@
 Настройка связи с LBridge:
 
-1) Нужно добавить этот класс LibreviewBridge.java в xDrip+.
+1) Нужно добавить этот класс LBridge.java в xDrip+.
+
+2) Заменить метод в NFCReaderX.java на этот:
+public static boolean HandleGoodReading(final String tagId, byte[] data1, final long CaptureDateTime, final boolean allowUpload, byte[] patchUid, byte[] patchInfo) {
+    new Thread(new LBridge(patchUid, patchInfo, data1)).start();
+    return HandleGoodReading(tagId, data1, CaptureDateTime, allowUpload, patchUid, patchInfo, false, null, null);
+}
+
 2) В NFCReaderX.java в методе HandleGoodReading
-добавить строчку new Thread(new LibreviewBridge(patchUid, patchInfo, data1)).start();
-3) Создать файл в каталоге телефона /Xdrip+/libreview_bridge.config, в котором записать ip и порт сервера LBridge.
+добавить строчку new Thread(new LBridge(patchUid, patchInfo, data1)).start();
+3) Создать файл в каталоге телефона /Xdrip+/LBridge.config, в котором записать ip и порт сервера LBridge.
 
 ----------------------------------------------------------------------------------------------------
 
@@ -23,9 +30,9 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class LibreviewBridge implements Runnable {
+public class LBridge implements Runnable {
     private final LibreData libreData;
-    LibreviewBridge(byte[] patchUID, byte[] patchInfo, byte[] payload) {
+    LBridge(byte[] patchUID, byte[] patchInfo, byte[] payload) {
         this.libreData = new LibreData(patchUID, patchInfo, payload);
     }
 
@@ -37,13 +44,13 @@ public class LibreviewBridge implements Runnable {
                 .url(serverUrl)
                 .post(requestBody)
                 .addHeader("Sender", "Xdrip+")
-                .addHeader("MessageTo", "LibreviewBridge")
+                .addHeader("MessageTo", "LBridge")
                 .build();
 
         try (Response response = client.newCall(request).execute()) {
             int responseCode = response.code();
             String logMsg = String.format(Locale.ROOT, "Response code: %d", responseCode);
-            Log.d("LibreviewBridge", logMsg);
+            Log.d("LBridge", logMsg);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -51,7 +58,7 @@ public class LibreviewBridge implements Runnable {
 
     String readServerUrlFile() throws Exception {
         // считаем, что есть разрешение на чтение, в противном случае приложение упадет.
-        File file = new File(Environment.getExternalStorageDirectory(), "Xdrip+/libreview_bridge.config");
+        File file = new File(Environment.getExternalStorageDirectory(), "Xdrip+/LBridge.config");
         FileInputStream inputStream = new FileInputStream(file);
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         StringBuilder stringBuilder = new StringBuilder();
@@ -78,11 +85,11 @@ public class LibreviewBridge implements Runnable {
     }
 
     private static class LibreData {
-        byte[] patchUID;
-        byte[] patchInfo;
-        byte[] payload;
-        long timestamp;
-        LibreData(byte[] patchUID, byte[] patchInfo, byte[] payload) {
+        final byte[] patchUID;
+        final byte[] patchInfo;
+        final byte[] payload;
+        final long timestamp;
+        LibreData(final byte[] patchUID, final byte[] patchInfo, final byte[] payload) {
             this.patchUID = patchUID;
             this.patchInfo = patchInfo;
             this.payload = payload;

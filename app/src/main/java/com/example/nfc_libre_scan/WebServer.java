@@ -76,25 +76,25 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
         // имена заголовков здесь почему-то с маленькой буквы
         String sender = headers.get("Sender".toLowerCase());
         String messageTo = headers.get("MessageTo".toLowerCase());
-        if (sender != null && sender.equals("Xdrip+")) {
-            if (messageTo != null && messageTo.equals("LibreviewBridge")) {
-                try {
-                    final HashMap<String, String> map = new HashMap<>();
-                    session.parseBody(map);
-                    final String json = map.get("postData");
+        boolean senderIsXdrip = sender != null && sender.equals("Xdrip+");
+        boolean messageToUs = messageTo != null && messageTo.equals("LBridge");
+        if (senderIsXdrip && messageToUs) {
+            try {
+                final HashMap<String, String> map = new HashMap<>();
+                session.parseBody(map);
+                final String json = map.get("postData");
 
-                    RawLibreData rawLibreData = new Gson().fromJson(json, RawLibreData.class);
+                final RawLibreData rawLibreData = new Gson().fromJson(json, RawLibreData.class);
 
-                    LibreMessage libreMessage = LibreMessage.getInstance(context, rawLibreData);
+                final LibreMessage libreMessage = LibreMessage.getInstance(context, rawLibreData);
 
-                    Logger.ok("LibreMessage received from server.");
+                Logger.ok("LibreMessage received from server.");
 
-                    listener.libreMessageReceived(libreMessage);
-                    return this.OK();
-                } catch (Exception e) {
-                    Logger.error(e);
-                    return this.INTERNAL_SERVER_ERROR();
-                }
+                listener.libreMessageReceived(libreMessage);
+                return this.OK();
+            } catch (Exception e) {
+                Logger.error(e);
+                return this.INTERNAL_SERVER_ERROR();
             }
         }
         return this.NOT_FOUND();

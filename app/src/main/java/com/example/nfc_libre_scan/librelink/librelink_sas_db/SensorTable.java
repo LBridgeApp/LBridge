@@ -56,9 +56,26 @@ public class SensorTable implements CrcTable {
     }
 
     public void updateToLastScan() throws Exception {
+
+        final String messageLibreSN = libreMessage.getLibreSN();
+        final String tableLibreSN = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
+
+        if(!messageLibreSN.equals(tableLibreSN)){
+            throw new Exception("Serial numbers of that sensor and librelink table does not equals.");
+        }
+
+        final byte[] messageAttenuationState = libreMessage.getLibreSavedState().getAttenuationState();
+        final byte[] messageCompositeState = libreMessage.getLibreSavedState().getCompositeState();
+
+        final byte[] tableAttenuationState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.attenuationState);
+        final byte[] tableCompositeState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.compositeState);
+
+        // Если в таблице LibreLink attenuationState и compositeState
+        // не равны null, а в libreMessage равны null, то не перезаписывать.
+        this.attenuationState = (messageAttenuationState != null) ? messageAttenuationState : tableAttenuationState;
+        this.compositeState = (messageCompositeState != null) ? messageCompositeState : tableCompositeState;
+
         this.sensorId = getLastStoredSensorId();
-        this.attenuationState = libreMessage.getLibreSavedState().getAttenuationState();
-        this.compositeState = libreMessage.getLibreSavedState().getCompositeState();
         this.lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
         this.lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
         this.lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();

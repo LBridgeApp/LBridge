@@ -51,10 +51,6 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
         Vibrator.SCAN_START.vibrate(activity);
         try (NfcV nfcVTag = NfcV.get(tag)) {
             this.nfcVTag = nfcVTag;
-            if (!nfcVTag.isConnected()) {
-                nfcVTag.connect();
-                Logger.ok("Libre tag connected");
-            }
 
             byte[] patchUID = this.queryPatchUID();
             byte[] patchInfo = this.queryPatchInfo();
@@ -84,6 +80,10 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
         boolean continueOperation = true;
         do {
             try {
+                if (!nfcVTag.isConnected()) {
+                    nfcVTag.connect();
+                    Logger.ok("Libre tag connected");
+                }
                 response = nfcVTag.transceive(cmd);
                 continueOperation = false;
             } catch (TagLostException ignored) {
@@ -104,7 +104,7 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
     }
 
     private byte[] queryPatchInfo() throws Exception {
-        //Logger.inf("Getting patchInfo...");
+        Logger.inf("Getting patchInfo...");
         // 0x02 - код команды Read Single Block, используемый для чтения одного блока данных с NFC-тега.
         // (byte) 0xa1 - код блока, который нужно прочитать.
         // 0x07 - номер блока, с которого нужно начать чтение.
@@ -112,16 +112,17 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
         byte[] patchInfo = this.runCmd(cmd);
         // Нужно отбросить первый нулевой байт
         patchInfo = Arrays.copyOfRange(patchInfo, 1, patchInfo.length);
-        //Logger.ok("PatchInfo retrieved.");
+
         if (patchInfo.length != 6) {
             throw new Exception("PatchInfo is not valid.");
         }
+        Logger.ok("PatchInfo retrieved.");
         return patchInfo;
     }
 
     private byte[] queryPayload() throws Exception {
         byte[] payload = new byte[1000];
-        //Logger.inf("Getting payload...");
+        Logger.inf("Getting payload...");
         final int correct_reply_size = 9;
         final int startBlock = 1;
         for (int i = 0; i < 43; i++) {
@@ -133,13 +134,14 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
             while (oneBlock.length != correct_reply_size);
             System.arraycopy(oneBlock, startBlock, payload, i * 8, 8);
         }
-        //Logger.ok("Payload retrieved.");
+
         payload = Arrays.copyOfRange(payload, 0, Payload.payloadBytesLength);
 
         boolean payloadIsValid = Payload.verify(payload);
         if (!payloadIsValid) {
             throw new Exception("Payload is not valid.");
         }
+        Logger.ok("Payload retrieved.");
         return payload;
     }
 }

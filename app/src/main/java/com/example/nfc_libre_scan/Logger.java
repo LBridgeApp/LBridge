@@ -39,10 +39,10 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "INFO";
 
-        instance.writeToDatabase(timeUTC, status, log);
         if (logListener != null) {
             logListener.logReceived(new LogRecord(timeUTC, status, log));
         }
+        instance.writeToDatabase(timeUTC, status, log);
     }
 
     public static void ok(String log) {
@@ -51,10 +51,10 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "OK";
 
-        instance.writeToDatabase(timeUTC, status, log);
         if (logListener != null) {
             logListener.logReceived(new LogRecord(timeUTC, status, log));
         }
+        instance.writeToDatabase(timeUTC, status, log);
     }
 
     public static void error(String log) {
@@ -63,10 +63,10 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "ERROR";
 
-        instance.writeToDatabase(timeUTC, status, log);
         if (logListener != null) {
             logListener.logReceived(new LogRecord(timeUTC, status, log));
         }
+        instance.writeToDatabase(timeUTC, status, log);
     }
 
     public static void criticalError(String log) {
@@ -75,10 +75,10 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "CRITICAL_ERROR";
 
-        instance.writeToDatabase(timeUTC, status, log);
         if (logListener != null) {
             logListener.logReceived(new LogRecord(timeUTC, status, log));
         }
+        instance.writeToDatabase(timeUTC, status, log);
     }
 
     public static void criticalError(Throwable e){
@@ -97,10 +97,10 @@ public class Logger {
         Logger.error(sw.toString()); // to main activity logger window
     }
 
-    private void writeToDatabase(LocalDateTime time, String status, String message) {
+    private void writeToDatabase(LocalDateTime utc, String status, String message) {
         try {
             ContentValues values = new ContentValues();
-            values.put(TableStrings.dateTimeUTC, time.format(dbTimeFormatter));
+            values.put(TableStrings.dateTimeUTC, utc.format(dbTimeFormatter));
             values.put(TableStrings.status, status);
             values.put(TableStrings.message, message);
             db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
@@ -128,7 +128,7 @@ public class Logger {
                     LogRecord logRecord = new LogRecord(time, status, message);
                     logsList.add(logRecord);
                 } else {
-                    Logger.error("Column no found in database");
+                    Logger.inf("Column no found in database");
                 }
             }
         } catch (SQLiteException e) {
@@ -176,7 +176,7 @@ public class Logger {
         }
 
         public LocalDateTime getDateTimeLocal() {
-            return dateTimeUTC.atZone(ZoneOffset.UTC).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+            return Time.fromUtcToLocal(dateTimeUTC);
         }
 
         public LocalDateTime getDateTimeUTC() {
