@@ -3,15 +3,17 @@
 1) Нужно добавить этот класс LBridge.java в xDrip+.
 
 2) Заменить метод в NFCReaderX.java на этот:
+
+------------------------------
 public static boolean HandleGoodReading(final String tagId, byte[] data1, final long CaptureDateTime, final boolean allowUpload, byte[] patchUid, byte[] patchInfo) {
     new Thread(new LBridge(patchUid, patchInfo, data1)).start();
     return HandleGoodReading(tagId, data1, CaptureDateTime, allowUpload, patchUid, patchInfo, false, null, null);
 }
+-------------------------------
 
-2) В NFCReaderX.java в методе HandleGoodReading
-добавить строчку new Thread(new LBridge(patchUid, patchInfo, data1)).start();
 3) Создать файл в каталоге телефона /Xdrip+/LBridge.config, в котором записать ip и порт сервера LBridge.
 
+LBridege.java code:
 ----------------------------------------------------------------------------------------------------
 
 package com.eveningoutpost.dexdrip;

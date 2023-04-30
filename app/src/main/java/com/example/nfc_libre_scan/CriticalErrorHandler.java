@@ -15,7 +15,7 @@ import java.io.StringWriter;
 
 public class CriticalErrorHandler implements Thread.UncaughtExceptionHandler{
     private final Context context;
-    CriticalErrorHandler(){
+    public CriticalErrorHandler(){
         this.context = App.getInstance().getApplicationContext();
     }
 

@@ -1,6 +1,7 @@
 package com.example.nfc_libre_scan.librelink;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +9,7 @@ import android.content.IntentFilter;
 
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.Time;
+import com.example.nfc_libre_scan.WebService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -19,8 +21,9 @@ public class PeriodicTimer extends BroadcastReceiver {
     private final LibreLink caller;
     private final AlarmManager alarmManager;
     private final PendingIntent pendingIntent;
+    private boolean timerIsActive = false;
 
-    public PeriodicTimer(LibreLink caller, Context context) {
+    public PeriodicTimer(LibreLink caller, WebService context) {
         this.caller = caller;
         this.alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
@@ -31,15 +34,15 @@ public class PeriodicTimer extends BroadcastReceiver {
     }
 
     protected void start() {
+        timerIsActive = true;
         planNextTask(TaskStatus.START_TIMER);
     }
-
     protected void stop() {
+        timerIsActive = false;
         alarmManager.cancel(pendingIntent);
     }
 
-    @Override
-    public void onReceive(Context context, Intent intent) {
+    private TaskStatus runTask(){
         TaskStatus status;
         try {
             caller.addLastScanToDatabase();
@@ -49,7 +52,15 @@ public class PeriodicTimer extends BroadcastReceiver {
             status = TaskStatus.FAILURE;
         }
         Logger.inf(String.format("Task has run. Task status: %s", status));
-        planNextTask(status);
+        return status;
+    }
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        if(timerIsActive){
+            TaskStatus taskStatus = runTask();
+            this.planNextTask(taskStatus);
+        }
     }
 
     private void planNextTask(TaskStatus taskStatus) {
@@ -68,24 +79,26 @@ public class PeriodicTimer extends BroadcastReceiver {
     }
 
     private enum TaskStatus {
+        // TODO: поменять время, если установлено тестовое.
         START_TIMER{
             int getNextTaskMinutes(){
                 // Данные приходят каждые 5 минут.
                 // Отправляем через шесть.
-                return 6;
+                return 1;
             }
         },
         SUCCESS {
             int getNextTaskMinutes() {
                 Random random = new Random();
                 int rand = random.nextInt(61); // from 0 to 60 minutes
-                return 60 + rand; // from 60 to 120 minutes.
+                //return 60 + rand; // from 60 to 120 minutes.
+                return 1;
             }
         }, FAILURE {
             int getNextTaskMinutes() {
                 // Данные приходят каждые 5 минут.
                 // Отправляем через шесть.
-                return 6;
+                return 1;
             }
         };
 

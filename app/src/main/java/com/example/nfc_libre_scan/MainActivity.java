@@ -2,6 +2,8 @@ package com.example.nfc_libre_scan;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -56,10 +58,15 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         removeLogDbBtn.setOnClickListener(this);
         clearLogWindowBtn.setOnClickListener(this);
 
-        libreLink = new LibreLink(this);
-        libreLink.listenLibreMessages(libreNFC);
-        sugarAddingBtn.setOnClickListener(this);
-        databaseRemovingBtn.setOnClickListener(this);
+        try {
+            libreLink = new LibreLink(this);
+            libreLink.listenLibreMessages(libreNFC);
+            sugarAddingBtn.setOnClickListener(this);
+            databaseRemovingBtn.setOnClickListener(this);
+        } catch (Exception e) {
+            Logger.error(e);
+            return;
+        }
 
 
         if (glucoseUnit == GlucoseUnit.MMOL) {
