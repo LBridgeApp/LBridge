@@ -13,18 +13,26 @@ import androidx.core.app.NotificationCompat;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-public class CriticalErrorHandler implements Thread.UncaughtExceptionHandler{
+public class CriticalErrorHandler implements Thread.UncaughtExceptionHandler {
     private final Context context;
-    public CriticalErrorHandler(){
+
+    public CriticalErrorHandler() {
         this.context = App.getInstance().getApplicationContext();
     }
 
-    public void setHandler(){
+    public void setHandler() {
         Thread.setDefaultUncaughtExceptionHandler(this);
     }
+
     @Override
     public void uncaughtException(@NonNull Thread t, @NonNull Throwable e) {
-        Logger.criticalError(e);
+
+        try {
+            Logger.criticalError(e);
+        }
+        catch (Exception err){
+            err.printStackTrace();
+        }
 
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
@@ -37,6 +45,7 @@ public class CriticalErrorHandler implements Thread.UncaughtExceptionHandler{
         Notification.CRITICAL_ERROR.update(sw.toString());
 
         context.startActivity(intent);
+
         Runtime.getRuntime().exit(1);
     }
 }

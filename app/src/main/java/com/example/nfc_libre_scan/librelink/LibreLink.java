@@ -1,6 +1,7 @@
 package com.example.nfc_libre_scan.librelink;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -8,6 +9,7 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.App;
+import com.example.nfc_libre_scan.LibreLinkActivityListener;
 import com.example.nfc_libre_scan.LibreMessageListener;
 import com.example.nfc_libre_scan.LibreMessageProvider;
 import com.example.nfc_libre_scan.Logger;
@@ -20,6 +22,7 @@ import com.example.nfc_libre_scan.librelink.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorTable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LibreLink implements LibreMessageListener {
@@ -31,9 +34,13 @@ public class LibreLink implements LibreMessageListener {
     private final Context context;
     private final RootLib rootLib;
     private final String ourDbPath;
+    private final PermissionLib permissionLib;
+    private static final List<LibreLinkActivityListener> listeners = new ArrayList<>();
 
     public LibreLink(Context context) throws Exception {
-        new PermissionLib(context).validateOverlay();
+        this.permissionLib = new PermissionLib(context);
+        // проверяем разрешение при запуске.
+        permissionLib.validateDrawOverlays();
 
         this.context = context;
         this.rootLib = new RootLib(context);
@@ -47,6 +54,10 @@ public class LibreLink implements LibreMessageListener {
 
     public void listenLibreMessages(LibreMessageProvider provider) {
         provider.setLibreMessageListener(this);
+    }
+
+    public static void setLibreLinkActivityListener(LibreLinkActivityListener listener){
+        LibreLink.listeners.add(listener);
     }
 
     public void addLastScanToDatabase() throws Exception {
@@ -72,51 +83,25 @@ public class LibreLink implements LibreMessageListener {
         rootLib.setFilePermission(LibreLink.librelink_sas_db_path, 660);
         Logger.ok("permission 660 set to db in librelink app");
 
-        ActivityManager activityManager = context.getSystemService(ActivityManager.class);
-        List<ActivityManager.AppTask> tasks = activityManager.getAppTasks();
-        int l = 5;
-
         startLibreLink();
 
-        tasks = activityManager.getAppTasks();
-        tasks.get(0).moveToFront();
-        //activityManager.moveTaskToFront();
-        int m = 5;
-
     }
+    private void startLibreLink() throws Exception {
+        // Несмотря на проверку в конструкторе...
+        // Если разрешение вдруг убрали,
+        // из сервиса не получится корректно отправить сахар.
+        permissionLib.validateDrawOverlays();
 
-    private void startLibreLink(){
         final String packageName = "com.freestylelibre.app.ru";
-        final String activityName = "com.librelink.app.ui.SplashActivity";
+        final String activityName = "com.librelink.app.ui.HomeActivity";
         Intent intent = new Intent();
         intent.setComponent(new ComponentName(packageName, activityName));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         App.getInstance().getApplicationContext().startActivity(intent);
+
+        LibreLink.listeners.forEach(l -> l.librelinkAppeared(context instanceof Activity));
         Logger.ok("LibreLink started");
     }
-
-    public void removeLibreLinkDatabases() throws Exception {
-        killLibreLink();
-        rootLib.removeFile(LibreLink.librelink_sas_db_path);
-        rootLib.removeFile(LibreLink.librelink_apollo_db_path);
-        Logger.ok("LibreLink dbs removed");
-    }
-
-    /*private void startLibreLink() {
-        final String packageName = "com.freestylelibre.app.ru";
-        final String activityName = "com.librelink.app.ui.SplashActivity";
-        Intent intent = new Intent();
-        intent.setComponent(new ComponentName(packageName, activityName));
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        App.getInstance().getApplicationContext().startActivity(intent);
-        Logger.ok("LibreLink started");
-    }*/
-
-    /*private void startLibreLink(){
-        Intent intent = new Intent(App.getInstance().getApplicationContext(), LibreLinkWrapper.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
-        App.getInstance().getApplicationContext().startActivity(intent);
-    }*/
 
     private void killLibreLink() {
         final String packageName = "com.freestylelibre.app.ru";
@@ -125,15 +110,12 @@ public class LibreLink implements LibreMessageListener {
         Logger.ok("LibreLink killed");
     }
 
-    /*private void hideLibreLink(){
-        // убираем перекрытие нашего приложения только что запущенным LibreLink.
-        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.AppTask> appTasks = activityManager.getAppTasks();
-        if(!appTasks.isEmpty()){
-            ActivityManager.AppTask lastTask = appTasks.get(appTasks.size() - 1);
-            lastTask.moveToFront();
-        }
-    }*/
+    public void removeLibreLinkDatabases() throws Exception {
+        killLibreLink();
+        rootLib.removeFile(LibreLink.librelink_sas_db_path);
+        rootLib.removeFile(LibreLink.librelink_apollo_db_path);
+        Logger.ok("LibreLink dbs removed");
+    }
 
     private void editDatabase() throws Exception {
         SQLiteDatabase db = SQLiteDatabase.openDatabase(context.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);

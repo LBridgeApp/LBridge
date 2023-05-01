@@ -7,55 +7,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <Button
-            android:id="@+id/removeLogsDb"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:text="@string/remove_logs_db" />
-
-        <Button
-            android:id="@+id/loadLogsFromDB"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/removeLogsDb"
-            android:layout_centerHorizontal="true"
-            android:text="@string/load_logs_from_db" />
-
-        <Button
-            android:id="@+id/clearLogWindow"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/loadLogsFromDB"
-            android:layout_centerHorizontal="true"
-            android:text="@string/clear_log_window" />
-
-        <TextView
-            android:id="@+id/logTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            android:background="#000000"
-            android:padding="16dp"
-            android:layout_below="@+id/clearLogWindow"
-            android:text="@string/app_logs_come_here"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <Button
-            android:id="@+id/sugarAddingBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/logTextView"
-            android:layout_centerHorizontal="true"
-            android:text="@string/add_last_scan_to_librelink_db" />
-
         <RadioGroup
             android:id="@+id/glucose_unit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_below="@id/sugarAddingBtn"
             android:layout_centerHorizontal="true">
 
             <RadioButton
@@ -86,11 +42,19 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 
+        <Button
+            android:id="@+id/sugarAddingBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/currentBgView"
+            android:layout_centerHorizontal="true"
+            android:text="@string/add_last_scan_to_librelink_db" />
+
         <TextView
             android:id="@+id/bgHistoryView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/currentBgView"
+            android:layout_below="@id/sugarAddingBtn"
             android:layout_margin="16dp"
             android:background="#000000"
             android:padding="16dp"
@@ -99,10 +63,29 @@
             android:textSize="16sp" />
 
         <Button
-            android:id="@+id/removeLibrelinkDB"
+            android:id="@+id/clearLogWindowBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/bgHistoryView"
+            android:layout_centerHorizontal="true"
+            android:text="@string/clear_log_window" />
+
+        <TextView
+            android:id="@+id/logTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:background="#000000"
+            android:padding="16dp"
+            android:layout_below="@+id/clearLogWindowBtn"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/removeLibrelinkDB"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/logTextView"
             android:layout_centerHorizontal="true"
             android:text="@string/remove_librelink_db" />
 

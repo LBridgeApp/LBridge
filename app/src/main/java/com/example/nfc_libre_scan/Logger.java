@@ -13,7 +13,9 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class Logger {
     private final SQLiteDatabase db;
@@ -24,12 +26,12 @@ public class Logger {
     }
 
     private static final Logger instance = new Logger();
-    private static LogListener logListener;
+    private static final List<LogListener> logListeners = new ArrayList<>();
     private static final String TAG = App.getInstance().getApplicationContext().getString(R.string.app_name);
     private static final DateTimeFormatter dbTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
 
     public static void setLoggerListener(LogListener listener) {
-        logListener = listener;
+        logListeners.add(listener);
     }
 
 
@@ -39,9 +41,8 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "INFO";
 
-        if (logListener != null) {
-            logListener.logReceived(new LogRecord(timeUTC, status, log));
-        }
+        logListeners.forEach(l -> l.logReceived(new LogRecord(Logger.getLogRecordCount(), timeUTC, status, log)));
+
         instance.writeToDatabase(timeUTC, status, log);
     }
 
@@ -51,9 +52,8 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "OK";
 
-        if (logListener != null) {
-            logListener.logReceived(new LogRecord(timeUTC, status, log));
-        }
+        logListeners.forEach(l -> l.logReceived(new LogRecord(Logger.getLogRecordCount(), timeUTC, status, log)));
+
         instance.writeToDatabase(timeUTC, status, log);
     }
 
@@ -63,9 +63,8 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "ERROR";
 
-        if (logListener != null) {
-            logListener.logReceived(new LogRecord(timeUTC, status, log));
-        }
+        logListeners.forEach(l -> l.logReceived(new LogRecord(Logger.getLogRecordCount(), timeUTC, status, log)));
+
         instance.writeToDatabase(timeUTC, status, log);
     }
 
@@ -75,13 +74,12 @@ public class Logger {
         final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
         final String status = "CRITICAL_ERROR";
 
-        if (logListener != null) {
-            logListener.logReceived(new LogRecord(timeUTC, status, log));
-        }
+        logListeners.forEach(l -> l.logReceived(new LogRecord(Logger.getLogRecordCount(), timeUTC, status, log)));
+
         instance.writeToDatabase(timeUTC, status, log);
     }
 
-    public static void criticalError(Throwable e){
+    public static void criticalError(Throwable e) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw); // to PrintWriter
@@ -109,23 +107,29 @@ public class Logger {
         }
     }
 
-    public static LogRecord[] getLogs() {
-        String[] columns = {TableStrings.id, TableStrings.dateTimeUTC, TableStrings.status, TableStrings.message};
+    public static LogRecord[] getLogs(int minId, int maxId) {
         Cursor cursor = null;
         List<LogRecord> logsList = new ArrayList<>();
 
         try {
-            cursor = instance.db.query(TableStrings.TABLE_NAME, columns, null, null, null, null, null);
+            String sql = String.format("SELECT %s, %s, %s, %s FROM %s WHERE %s BETWEEN %s AND %s",
+                    TableStrings.id, TableStrings.dateTimeUTC,
+                    TableStrings.status, TableStrings.message,
+                    TableStrings.TABLE_NAME,
+                    TableStrings.id, minId, maxId);
+            cursor = instance.db.rawQuery(sql, null);
             while (cursor.moveToNext()) {
+                int idIndex = cursor.getColumnIndex(TableStrings.id);
                 int statusIndex = cursor.getColumnIndex(TableStrings.status);
                 int timeIndex = cursor.getColumnIndex(TableStrings.dateTimeUTC);
                 int messageIndex = cursor.getColumnIndex(TableStrings.message);
 
-                if (statusIndex >= 0 && timeIndex >= 0 && messageIndex >= 0) {
+                if (idIndex >= 0 && statusIndex >= 0 && timeIndex >= 0 && messageIndex >= 0) {
+                    int id = cursor.getInt(idIndex);
                     String status = cursor.getString(statusIndex);
                     LocalDateTime time = LocalDateTime.parse(cursor.getString(timeIndex), dbTimeFormatter);
                     String message = cursor.getString(messageIndex);
-                    LogRecord logRecord = new LogRecord(time, status, message);
+                    LogRecord logRecord = new LogRecord(id, time, status, message);
                     logsList.add(logRecord);
                 } else {
                     Logger.inf("Column no found in database");
@@ -140,6 +144,16 @@ public class Logger {
         }
 
         return logsList.toArray(new LogRecord[0]);
+    }
+
+    public static int getLogRecordCount() {
+        Cursor cursor = instance.db.rawQuery(String.format("SELECT COUNT(*) FROM %s", TableStrings.TABLE_NAME), null);
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+        cursor.close();
+        return count;
     }
 
     public static void recreateLogDb() {
@@ -157,14 +171,20 @@ public class Logger {
     }
 
     static class LogRecord {
+        private final int id;
         private final LocalDateTime dateTimeUTC;
         private final String status;
         private final String message;
 
-        LogRecord(LocalDateTime dateTimeUTC, String status, String message) {
+        LogRecord(int id, LocalDateTime dateTimeUTC, String status, String message) {
+            this.id = id;
             this.dateTimeUTC = dateTimeUTC;
             this.status = status;
             this.message = message;
+        }
+
+        public int getId() {
+            return id;
         }
 
         public String getMessage() {
@@ -184,7 +204,13 @@ public class Logger {
         }
 
         public String toShortString() {
-            return String.format("[%s] [%s] %s", this.getDateTimeLocal().format(DateTimeFormatter.ofPattern("HH:mm")), this.getStatus(), this.getMessage());
+            return String.format("[%s] [%s] %s", this.getDateTimeLocal().format(DateTimeFormatter.ofPattern("HH:mm")),
+                    this.getStatus(), this.getMessage().split("\n")[0]);
+        }
+
+        public String toFullString(){
+            return String.format("[%s] [%s] %s", this.getDateTimeLocal().format(DateTimeFormatter.ofPattern("HH:mm:ss")),
+                    this.getStatus(), this.getMessage());
         }
     }
 

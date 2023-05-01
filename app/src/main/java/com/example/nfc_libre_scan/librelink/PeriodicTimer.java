@@ -84,21 +84,23 @@ public class PeriodicTimer extends BroadcastReceiver {
             int getNextTaskMinutes(){
                 // Данные приходят каждые 5 минут.
                 // Отправляем через шесть.
-                return 1;
+                return 6;
+                //return 1;
             }
         },
         SUCCESS {
             int getNextTaskMinutes() {
                 Random random = new Random();
                 int rand = random.nextInt(61); // from 0 to 60 minutes
-                //return 60 + rand; // from 60 to 120 minutes.
-                return 1;
+                return 60 + rand; // from 60 to 120 minutes.
+                //return 1;
             }
         }, FAILURE {
             int getNextTaskMinutes() {
                 // Данные приходят каждые 5 минут.
                 // Отправляем через шесть.
-                return 1;
+                return 6;
+                //return 1;
             }
         };
 

@@ -12,4 +12,9 @@
     <string name="load_logs_from_db">Load logs from db</string>
     <string name="remove_logs_db">Remove logs db</string>
     <string name="clear_log_window">Clear log window</string>
+    <string name="set_draw_overlays_permission">Set draw overlays permission</string>
+    <string name="logs">Logs</string>
+    <string name="next">Next</string>
+    <string name="load_more">Load more</string>
+    <string name="set_draw_overlay_permission">Set Draw Overlay Permission</string>
 </resources>

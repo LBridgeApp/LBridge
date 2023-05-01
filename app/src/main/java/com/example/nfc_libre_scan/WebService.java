@@ -29,7 +29,7 @@ public class WebService extends Service {
 
     @Override
     public void onCreate() {
-        new CriticalErrorHandler().setHandler();
+
         // TODO: Посмотреть, как работает запуск активити из-под сервиса.
         WebService.webServiceIsRunning = true;
     }
@@ -56,7 +56,8 @@ public class WebService extends Service {
         if (server != null) {
             server.stop();
         }
-        Logger.ok("Web server stopped.");
+        Logger.inf("Web server stopped.");
+        // TODO: показывать уведомление, что сервер остановлен
         WebService.webServiceIsRunning = false;
         super.onDestroy();
     }
