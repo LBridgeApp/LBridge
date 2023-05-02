@@ -110,7 +110,7 @@ public enum Notification {
             // несмотря на то, что фактически это канал
             // WebService, LibreLink на нем висит.
             // поэтому намеренно так назвал.
-            return "LIBRELINK_SERVICE_CHANNEL";
+            return "CRITICAL_ERROR_CHANNEL";
         }
 
         protected String getContentTitle() {
