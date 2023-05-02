@@ -5,7 +5,15 @@
         android:orderInCategory="1"
         android:title="@string/logs" />
     <item
-        android:id="@+id/set_draw_overlay_permission"
+        android:id="@+id/startService"
         android:orderInCategory="2"
+        android:title="@string/start_web_service" />
+    <item
+        android:id="@+id/stopService"
+        android:orderInCategory="3"
+        android:title="@string/stop_web_service" />
+    <item
+        android:id="@+id/set_draw_overlay_permission"
+        android:orderInCategory="4"
         android:title="@string/set_draw_overlay_permission" />
 </menu>

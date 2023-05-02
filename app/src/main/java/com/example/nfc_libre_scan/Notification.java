@@ -26,6 +26,11 @@ public enum Notification {
         }
 
         @Override
+        protected void cancel() {
+            notificationManager.cancel(this.getId());
+        }
+
+        @Override
         protected NotificationCompat.Builder getBuilder() {
             return new NotificationCompat.Builder(context, this.getChannelId())
                     .setChannelId(this.getChannelId())
@@ -59,6 +64,67 @@ public enum Notification {
             return "CRITICAL_ERROR_CHANNEL";
         }
     },
+    SERVICE_STOPPED {
+        @Override
+        protected void createChannel() {
+            String channelId = this.getChannelId();
+            CharSequence name = this.getChannelId();
+            int importance = this.getImportance();
+            NotificationChannel channel = new NotificationChannel(channelId, name, importance);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        @Override
+        protected void update(String contextText) {
+            NotificationCompat.Builder builder = this.getBuilder();
+            builder.setContentText(contextText);
+            notificationManager.notify(this.getId(), builder.build());
+        }
+
+        @Override
+        protected void cancel() {
+            notificationManager.cancel(this.getId());
+        }
+
+        @Override
+        protected int getId() {
+            return 3;
+        }
+
+        @Override
+        protected NotificationCompat.Builder getBuilder() {
+            return new NotificationCompat.Builder(context, this.getChannelId())
+                    .setChannelId(this.getChannelId())
+                    .setContentTitle(this.getContentTitle())
+                    .setContentText("IMPORTANT:\n" +
+                            "SERVICE HAS STOPPED!\n" +
+                            "See logs.")
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setPriority(this.getPriority())
+                    .setColor(Color.RED) // цвет фона
+                    .setColorized(true)
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(null));
+        }
+
+        protected String getChannelId() {
+            // несмотря на то, что фактически это канал
+            // WebService, LibreLink на нем висит.
+            // поэтому намеренно так назвал.
+            return "LIBRELINK_SERVICE_CHANNEL";
+        }
+
+        protected String getContentTitle() {
+            return App.getInstance().getApplicationContext().getString(R.string.app_name);
+        }
+
+        protected int getPriority() {
+            return NotificationCompat.PRIORITY_MAX;
+        }
+
+        protected int getImportance() {
+            return NotificationManager.IMPORTANCE_HIGH;
+        }
+    },
     HTTP_SERVER {
         protected void createChannel() {
             String channelId = this.getChannelId();
@@ -73,6 +139,11 @@ public enum Notification {
             NotificationCompat.Builder builder = this.getBuilder();
             builder.setContentText(contextText);
             notificationManager.notify(this.getId(), builder.build());
+        }
+
+        @Override
+        protected void cancel() {
+            notificationManager.cancel(this.getId());
         }
 
         @Override
@@ -119,6 +190,7 @@ public enum Notification {
 
     protected abstract void createChannel();
     protected abstract void update(String contextText);
+    protected abstract void cancel();
     protected abstract int getId();
     protected abstract NotificationCompat.Builder getBuilder();
 }

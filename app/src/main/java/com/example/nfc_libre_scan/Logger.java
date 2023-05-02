@@ -34,6 +34,16 @@ public class Logger {
         logListeners.add(listener);
     }
 
+    public static void warn(String log){
+        Log.w(TAG, log);
+
+        final LocalDateTime timeUTC = LocalDateTime.now(ZoneOffset.UTC);
+        final String status = "WARN";
+
+        logListeners.forEach(l -> l.logReceived(new LogRecord(Logger.getLogRecordCount(), timeUTC, status, log)));
+
+        instance.writeToDatabase(timeUTC, status, log);
+    }
 
     public static void inf(String log) {
         Log.i(TAG, log);

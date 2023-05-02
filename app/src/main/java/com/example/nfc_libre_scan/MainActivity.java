@@ -2,10 +2,11 @@ package com.example.nfc_libre_scan;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.ActivityManager;
-import android.content.Context;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -34,7 +35,6 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
     private PermissionLib permissionLib;
     private GlucoseUnit glucoseUnit = GlucoseUnit.MMOL;
 
-    // TODO: Интерфейс активити: сделать количество минут рандомизации отправки сервиса.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,9 +76,6 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         } catch (Exception e) {
             Logger.error(e);
         }
-
-        WebService.startService(this);
-
     }
 
     private void showBG() {
@@ -143,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         String[] logs = b.split("\n");
         StringBuilder b2 = new StringBuilder();
         int logLinesCount = Math.min(logs.length, 10);
-        for(int i = 0; i < logLinesCount; i++){
+        for (int i = 0; i < logLinesCount; i++) {
             b2.append(String.format("%s\n", logs[i]));
         }
         this.runOnUiThread(() -> logTextView.setText(b2));
@@ -152,17 +149,15 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
 
     @Override
     public void onClick(View v) {
-        if(v.getId() == R.id.clearLogWindowBtn){
+        if (v.getId() == R.id.clearLogWindowBtn) {
             this.runOnUiThread(() -> logTextView.setText(null));
-        }
-        else if (v.getId() == R.id.sugarAddingBtn) {
+        } else if (v.getId() == R.id.sugarAddingBtn) {
             try {
                 libreLink.addLastScanToDatabase();
             } catch (Exception e) {
                 Logger.error(e);
             }
-        }
-        else if (v.getId() == R.id.removeLibrelinkDB) {
+        } else if (v.getId() == R.id.removeLibrelinkDB) {
             try {
                 libreLink.removeLibreLinkDatabases();
             } catch (Exception e) {
@@ -170,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
             }
         }
     }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
@@ -179,12 +175,17 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if(item.getItemId() == R.id.open_logs){
+        if (item.getItemId() == R.id.open_logs) {
             Intent intent = new Intent(this, LogActivity.class);
             this.startActivity(intent);
-        }
-        else if(item.getItemId() == R.id.set_draw_overlay_permission){
+        } else if (item.getItemId() == R.id.set_draw_overlay_permission) {
             permissionLib.setDrawOverlayActivity();
+        }
+        else if(item.getItemId() == R.id.startService){
+            WebService.startService();
+        }
+        else if(item.getItemId() == R.id.stopService){
+            WebService.stopService();
         }
         return super.onOptionsItemSelected(item);
     }

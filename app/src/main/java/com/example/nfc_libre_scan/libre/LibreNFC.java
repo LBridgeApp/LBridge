@@ -29,7 +29,6 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
     public void listenSensor() {
         NfcAdapter nfcAdapter = NfcAdapter.getDefaultAdapter(activity);
         nfcAdapter.disableReaderMode(activity);
-        Logger.ok("NFC reader mode disabled");
         /*
          * "FLAG_READER_NFC_V" - указывает, что считыватель должен быть настроен для чтения технологии NFC-V (ISO15693).
          *  "FLAG_READER_SKIP_NDEF_CHECK" - указывает, что при чтении тега не нужно проверять наличие NDEF сообщения на теге.
@@ -42,7 +41,7 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
         options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 5000);
 
         nfcAdapter.enableReaderMode(activity, this, flags, options);
-        Logger.ok("NFC reader mode enabled");
+        Logger.ok("NFC is ready");
     }
 
     @Override

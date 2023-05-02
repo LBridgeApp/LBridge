@@ -68,7 +68,6 @@
                 <action android:name="com.example.nfc_libre_scan.librelink.timerReceiver" />
             </intent-filter>
         </receiver>
-        <!--TODO: посмотреть, правильные ли exported -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"

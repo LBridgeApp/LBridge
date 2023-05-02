@@ -3,6 +3,8 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.example.nfc_libre_scan.libre.LibreMessage;
+
 public class SqlUtils {
     enum Mode{ READING, WRITING }
 
@@ -36,6 +38,27 @@ public class SqlUtils {
         return data;
     }
 
+    protected static boolean isTableNull(SQLiteDatabase db, String tableName){
+        String sql = String.format("SELECT COUNT(*) FROM %s;", tableName);
+        Cursor cursor = db.rawQuery(sql, null);
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+        cursor.close();
+        return count == 0;
+    }
+
+    protected static void validateTime(TimeTable table, LibreMessage libreMessage) throws Exception {
+        if(!table.isTableNull()){
+            long tableLastTimestampUTC = table.getLastUTCTimestamp();
+            long libreMessageTimestampUTC = libreMessage.getRawLibreData().getTimestamp();
+            if(libreMessageTimestampUTC < tableLastTimestampUTC){
+                throw new Exception("Current LibreMessage UTC time is less, than table last UTC time");
+            }
+        }
+    }
+
     protected static void validateCrcAlgorithm(CrcTable table, SqlUtils.Mode mode) throws Exception {
         if(!table.isTableNull()){
             table.fillByLastRecord();
@@ -47,14 +70,5 @@ public class SqlUtils {
         }
     }
 
-    protected static boolean isTableNull(SQLiteDatabase db, String tableName){
-        String sql = String.format("SELECT COUNT(*) FROM %s;", tableName);
-        Cursor cursor = db.rawQuery(sql, null);
-        int count = 0;
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0);
-        }
-        cursor.close();
-        return count == 0;
-    }
+
 }

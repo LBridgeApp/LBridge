@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.zip.CRC32;
 
-public class HistoricReadingTable implements CrcTable {
+public class HistoricReadingTable implements CrcTable, TimeTable {
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
@@ -78,11 +78,18 @@ public class HistoricReadingTable implements CrcTable {
     }
 
     @Override
+    public long getLastUTCTimestamp() {
+        return (long) this.getRelatedValueForLastReadingId(TableStrings.timestampUTC);
+    }
+
+    @Override
     public boolean isTableNull() {
         return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
+        SqlUtils.validateTime(this, libreMessage);
+
         final int lastStoredSampleNumber =  (this.getRelatedValueForLastReadingId(TableStrings.sampleNumber) == null) ? 0 : ((Long) this.getRelatedValueForLastReadingId(TableStrings.sampleNumber)).intValue();
 
         HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgs())
@@ -117,10 +124,10 @@ public class HistoricReadingTable implements CrcTable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        this.triggerOnTableChangedEvent();
+        this.onTableChanged();
     }
 
-    private void triggerOnTableChangedEvent() throws Exception {
+    private void onTableChanged() throws Exception {
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 

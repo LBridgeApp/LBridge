@@ -49,7 +49,7 @@ public class LibreMessage {
         return lockingStatus;
     }
 
-    private void lockForSending(MessageLockingStatus reason) {
+    private void lockFromAddingToDB(MessageLockingStatus reason) {
         if (lockingStatus == MessageLockingStatus.UNLOCKED) {
             this.lockingStatus = reason;
         }
@@ -64,8 +64,8 @@ public class LibreMessage {
 
     }
 
-    public void triggerOnMessageSentEvent() {
-        this.lockForSending(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_SENT);
+    public void onAddedToDatabase() {
+        this.lockFromAddingToDB(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_SENT);
     }
 
     private LibreMessage(RawLibreData rawLibreData, LibreSavedState libreSavedState, String libreSN, OOPResults oopResults) throws Exception {
@@ -84,33 +84,33 @@ public class LibreMessage {
         final double sensorTimeMinutes = Payload.getSensorTimeInMinutes(this.getRawLibreData().getPayload());
 
         if (sensorTimeMinutes >= 60 * 24 * 14.0) {
-            lockForSending(MessageLockingStatus.SENSOR_EXPIRED);
+            lockFromAddingToDB(MessageLockingStatus.SENSOR_EXPIRED);
             return;
         }
 
         if (sensorTimeMinutes < 60) {
-            lockForSending(MessageLockingStatus.SENSOR_STARTING);
+            lockFromAddingToDB(MessageLockingStatus.SENSOR_STARTING);
             return;
         }
 
         switch (sensorStatus) {
             case 0x01:
-                lockForSending(MessageLockingStatus.SENSOR_NOT_ACTIVATED);
+                lockFromAddingToDB(MessageLockingStatus.SENSOR_NOT_ACTIVATED);
                 return;
             case 0x02:
-                lockForSending(MessageLockingStatus.SENSOR_STARTING);
+                lockFromAddingToDB(MessageLockingStatus.SENSOR_STARTING);
                 return;
             case 0x03:
                 return;
             case 0x04:
             case 0x05:
-                lockForSending(MessageLockingStatus.SENSOR_EXPIRED);
+                lockFromAddingToDB(MessageLockingStatus.SENSOR_EXPIRED);
                 return;
             case 0x06:
-                lockForSending(MessageLockingStatus.SENSOR_FAILURE);
+                lockFromAddingToDB(MessageLockingStatus.SENSOR_FAILURE);
                 return;
             default:
-                lockForSending(MessageLockingStatus.SENSOR_UNKNOWN_STATUS);
+                lockFromAddingToDB(MessageLockingStatus.SENSOR_UNKNOWN_STATUS);
         }
     }
 

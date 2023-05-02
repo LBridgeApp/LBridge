@@ -77,7 +77,7 @@ public class LibreLink implements LibreMessageListener {
         Logger.ok("Permission 666 set to db in our app");
         editDatabase();
         Logger.ok("database edited.");
-        libreMessage.triggerOnMessageSentEvent();
+        libreMessage.onAddedToDatabase();
         rootLib.copyFile(ourDbPath, LibreLink.librelink_sas_db_path);
         Logger.ok("edited db to librelink app copied!");
         rootLib.setFilePermission(LibreLink.librelink_sas_db_path, 660);

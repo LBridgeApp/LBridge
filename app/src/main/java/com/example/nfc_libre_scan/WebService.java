@@ -3,6 +3,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Binder;
 import android.os.IBinder;
 
 import com.example.nfc_libre_scan.librelink.LibreLink;
@@ -10,28 +11,42 @@ import com.example.nfc_libre_scan.librelink.LibreLink;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.util.ArrayList;
 import java.util.List;
 
 public class WebService extends Service {
-    private static boolean webServiceIsRunning = false;
+    private WebServer server;
+    private static WebService instance = null;
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
-    // TODO: реализовать подключение к сервису.
-    public static void startService(Context context) {
-        if (!WebService.webServiceIsRunning) {
+    public static void startService() {
+        Logger.inf("Trying to start service...");
+        Context context = App.getInstance().getApplicationContext();
+        if (WebService.instance == null) {
             Intent intent = new Intent(context, WebService.class);
             context.startForegroundService(intent);
             Logger.ok("WebService started");
         } else {
-            Logger.error("WebService already running.");
+            Logger.warn("WebService already running.");
         }
     }
-    private WebServer server;
+
+    public static void stopService(){
+        if(instance != null){
+            instance.stopSelf();
+            Logger.ok("WebService stopped.");
+        }
+        else {
+            Logger.warn("WebService already is not exists.");
+        }
+    }
 
     @Override
     public void onCreate() {
-
-        // TODO: Посмотреть, как работает запуск активити из-под сервиса.
-        WebService.webServiceIsRunning = true;
+        WebService.instance = this;
     }
 
     @Override
@@ -44,8 +59,13 @@ public class WebService extends Service {
             Logger.ok("Web server started.");
             LibreLink libreLink = new LibreLink(this);
             libreLink.listenLibreMessages(server);
+
         } catch (Exception e) {
             Logger.error(e);
+            String errorMsg = String.format("IMPORTANT: SERVICE STOPPED!\n" +
+                    "See logs. Error msg:\n" +
+                    "%s", e.getMessage());
+            Notification.SERVICE_STOPPED.update(errorMsg);
             this.stopSelf();
         }
         return START_STICKY;
@@ -56,9 +76,9 @@ public class WebService extends Service {
         if (server != null) {
             server.stop();
         }
+        Notification.HTTP_SERVER.cancel();
         Logger.inf("Web server stopped.");
-        // TODO: показывать уведомление, что сервер остановлен
-        WebService.webServiceIsRunning = false;
+        WebService.instance = null;
         super.onDestroy();
     }
 
@@ -99,10 +119,5 @@ public class WebService extends Service {
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("ServerPort", value);
         editor.apply();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
     }
 }

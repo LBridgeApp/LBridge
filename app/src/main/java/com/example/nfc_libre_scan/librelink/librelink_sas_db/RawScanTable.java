@@ -10,7 +10,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class RawScanTable implements CrcTable {
+public class RawScanTable implements CrcTable, TimeTable {
     private final SQLiteDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
@@ -72,11 +72,18 @@ public class RawScanTable implements CrcTable {
     }
 
     @Override
+    public long getLastUTCTimestamp() {
+        return (long) this.getRelatedValueForLastScanId(TableStrings.timestampUTC);
+    }
+
+    @Override
     public boolean isTableNull() {
         return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
+        SqlUtils.validateTime(this, libreMessage);
+
         this.patchInfo = libreMessage.getRawLibreData().getPatchInfo();
         this.payload = libreMessage.getRawLibreData().getPayload();
         // не нужно менять scanId, так как это значение само увеличивается при добавлении записи.
@@ -97,10 +104,10 @@ public class RawScanTable implements CrcTable {
         values.put(TableStrings.CRC, computedCRC);
 
         db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        this.triggerOnTableChangedEvent();
+        this.onTableChanged();
     }
 
-    private void triggerOnTableChangedEvent() throws Exception {
+    private void onTableChanged() throws Exception {
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 

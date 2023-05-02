@@ -10,11 +10,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.zip.CRC32;
 
-public class SensorTable implements CrcTable {
+public class SensorTable implements CrcTable, TimeTable {
 
     private final SQLiteDatabase db;
     private final LibreMessage libreMessage;
@@ -56,6 +55,7 @@ public class SensorTable implements CrcTable {
     }
 
     public void updateToLastScan() throws Exception {
+        SqlUtils.validateTime(this, libreMessage);
 
         final String messageLibreSN = libreMessage.getLibreSN();
         final String tableLibreSN = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
@@ -109,10 +109,10 @@ public class SensorTable implements CrcTable {
 
         statement.execute();
 
-        this.triggerOnTableChangedEvent();
+        this.onTableChanged();
     }
 
-    private void triggerOnTableChangedEvent() throws Exception {
+    private void onTableChanged() throws Exception {
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 
@@ -207,6 +207,11 @@ public class SensorTable implements CrcTable {
     @Override
     public long getOriginalCRC() {
         return this.CRC;
+    }
+
+    @Override
+    public long getLastUTCTimestamp() {
+        return (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampUTC);
     }
 
     @Override

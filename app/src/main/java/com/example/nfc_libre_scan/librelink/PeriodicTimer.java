@@ -90,9 +90,13 @@ public class PeriodicTimer extends BroadcastReceiver {
         },
         SUCCESS {
             int getNextTaskMinutes() {
+                /* рандомизуем время отправки.
+                * Следующая отправка минимум через час,
+                * максимум через два часа.
+                */
                 Random random = new Random();
-                int rand = random.nextInt(61); // from 0 to 60 minutes
-                return 60 + rand; // from 60 to 120 minutes.
+                int randomMinutes = random.nextInt(61); // from 0 to 60 minutes
+                return 60 + randomMinutes; // from 60 to 120 minutes.
                 //return 1;
             }
         }, FAILURE {

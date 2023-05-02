@@ -22,6 +22,14 @@ public class RawLibreData {
     private final long timestamp;
 
     public long getTimestamp() {
+        /*
+        * Несмотря на то, что UTC последнего сканирования
+        * принимается от клиента, тем не менее, разница во времени
+        * между клиентом и сервером неопасна, так как на сервере
+        * проводится валидация времени.
+        * То есть, будет пресечена запись в таблицу LibreLink,
+        * если последний UTC timestamp в ней больше, чем
+        * текущий timestamp от клиента.*/
         return timestamp;
     }
 
@@ -39,7 +47,7 @@ public class RawLibreData {
         return (patchUID != null && patchUID.length == 8
                 && patchInfo != null && patchInfo.length == 6
                 && Payload.verify(payload)
-                && timestamp != 0);
+                && timestamp > 0);
     }
 
     public static boolean verify(RawLibreData rawLibreData) {
