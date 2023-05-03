@@ -1,8 +1,12 @@
 package com.example.nfc_libre_scan.libre;
 
 import com.example.nfc_libre_scan.Logger;
+import com.oop1.Utils;
 
-import java.util.Arrays;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 public class Payload {
 
@@ -10,6 +14,21 @@ public class Payload {
 
     public static int getSensorTimeInMinutes(byte[] payload){
         return 256 * (payload[317] & 0xFF) + (payload[316] & 0xFF);
+    }
+
+    public static long getSensorStartTimestampLocal(long scanUnixTimestamp, byte[] payload){
+        long timestampUTC = Payload.getSensorStartTimestampUTC(scanUnixTimestamp, payload);
+        return Utils.getLocalTimestampFromUtc(timestampUTC);
+    }
+
+    public static long getSensorStartTimestampUTC(long scanUnixTimestamp, byte[] payload){
+        int sensorTimeInMinutes = Payload.getSensorTimeInMinutes(payload);
+        Instant scanTimestampAsInstant = Instant.ofEpochMilli(scanUnixTimestamp);
+        LocalDateTime scanTimeStampAsDateTime = LocalDateTime.ofInstant(scanTimestampAsInstant, ZoneOffset.UTC);
+        return scanTimeStampAsDateTime
+                .minusMinutes(sensorTimeInMinutes)
+                .toInstant(ZoneOffset.UTC)
+                .toEpochMilli();
     }
 
     public static byte getSensorStatus(byte[] payload){

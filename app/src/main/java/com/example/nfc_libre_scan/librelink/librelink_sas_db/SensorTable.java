@@ -1,10 +1,13 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
+import android.content.ContentValues;
+import android.database.Cursor;
 import android.database.DatabaseUtils;
-import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.libre.PatchUID;
+import com.oop1.CurrentBg;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -15,27 +18,22 @@ import java.util.zip.CRC32;
 
 public class SensorTable implements CrcTable, TimeTable {
 
-    private final SQLiteDatabase db;
+    private final LibreLinkDatabase db;
     private final LibreMessage libreMessage;
+    private final UserTable userTable;
+    private final SensorSelectionRangeTable sensorSelectionRangeTable;
 
-    public SensorTable(SQLiteDatabase db, LibreMessage libreMessage) throws Exception {
+    public SensorTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.libreMessage = libreMessage;
-        if(SqlUtils.isTableNull(db, TableStrings.TABLE_NAME)){
-            throw new Exception(String.format("%s table is null", TableStrings.TABLE_NAME));
-        }
+        this.libreMessage = db.getLibreMessage();
+        this.userTable = db.getUserTable();
+        this.sensorSelectionRangeTable = db.getSensorSelectionRangeTable();
 
-        if(isSensorExpired()){
-            throw new Exception(String.format("Sensor is expired in %s table. Clear database", TableStrings.TABLE_NAME));
-        }
-
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
+        this.onTableClassInit();
     }
 
-    private boolean isSensorExpired() {
-        this.sensorStartTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.getSensorStartTimestampUTC);
-
-        Instant startInstant = Instant.ofEpochMilli(this.sensorStartTimestampUTC);
+    private static boolean isSensorExpired(long sensorStartTimestampUTC) {
+        Instant startInstant = Instant.ofEpochMilli(sensorStartTimestampUTC);
         Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
         long sensorExpirationTimestamp = endInstant.toEpochMilli();
 
@@ -44,26 +42,109 @@ public class SensorTable implements CrcTable, TimeTable {
         return currentTimestamp >= sensorExpirationTimestamp;
     }
 
+    private boolean isSensorExtended(){
+        String originalLibreSN = libreMessage.getLibreSN();
+
+        boolean sensorIsExtended;
+        String sql = String.format("SELECT %s FROM %s WHERE %s=%s",
+                TableStrings.sensorStartTimestampUTC, TableStrings.TABLE_NAME,
+                TableStrings.serialNumber, originalLibreSN);
+
+        Cursor cursor = db.getObject().rawQuery(sql, null);
+        if(cursor.moveToFirst()){
+            long startTimestampOfSensorWithOriginalSerialNumber = cursor.getLong(0);
+            sensorIsExtended = isSensorExpired(startTimestampOfSensorWithOriginalSerialNumber);
+        }
+        else{
+            sensorIsExtended = false;
+        }
+        cursor.close();
+
+        return sensorIsExtended;
+    }
+
 
     protected Integer getLastStoredSensorId() {
-        return SqlUtils.getLastStoredFieldValue(db, TableStrings.sensorId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.sensorId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastSensorId(String fieldName) {
         final int lastStoredSensorId = getLastStoredSensorId();
-        return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
+        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
     }
 
-    public void updateToLastScan() throws Exception {
-        SqlUtils.validateTime(this, libreMessage);
-
-        final String messageLibreSN = libreMessage.getLibreSN();
-        final String tableLibreSN = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
-
-        if(!messageLibreSN.equals(tableLibreSN)){
-            throw new Exception("Serial numbers of that sensor and librelink table does not equals.");
+    private void createNewSensorRecord() throws Exception {
+        if(isSensorExtended()){
+            // если оригинальный серийный номер уже присутствует в базе, а сенсор продленный.
+            this.uniqueIdentifier = PatchUID.generateFake();
+            this.serialNumber = PatchUID.decodeSerialNumber(this.uniqueIdentifier);
+        }
+        else {
+            // если сенсор новый или всё-таки продленный, но отсутствует в базе.
+            this.uniqueIdentifier = libreMessage.getRawLibreData().getPatchUID();
+            this.serialNumber = libreMessage.getLibreSN();
         }
 
+        this.attenuationState = libreMessage.getLibreSavedState().getAttenuationState();
+        this.bleAddress = null;
+        this.compositeState = libreMessage.getLibreSavedState().getCompositeState();
+        this.enableStreamingTimestamp = 0;
+        this.endedEarly = false;
+        this.initialPatchInformation = libreMessage.getRawLibreData().getPatchInfo();
+        this.lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
+        this.lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
+        this.lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
+        this.lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
+        this.lsaDetected = false;
+        this.measurementState = null;
+        this.personalizationIndex = 0;
+        // не нужно писать sensorId, так как это значение само увеличивается при добавлении записи.
+        this.sensorStartTimeZone = libreMessage.getCurrentBg().getTimeZone();
+        this.sensorStartTimestampLocal = libreMessage.getSensorStartTimestampLocal();
+        this.sensorStartTimestampUTC = libreMessage.getSensorStartTimestampUTC();
+        this.streamingAuthenticationData = null;
+        this.streamingUnlockCount = 0;
+        this.unrecordedHistoricTimeChange = 0;
+        this.unrecordedRealTimeTimeChange = 0;
+        this.userId = userTable.getLastStoredUserId();
+        this.warmupPeriodInMinutes = 60;
+        this.wearDurationInMinutes = 20160;
+        this.CRC = this.computeCRC32();
+
+        ContentValues values = new ContentValues();
+        values.put(TableStrings.attenuationState, attenuationState);
+        values.put(TableStrings.bleAddress, bleAddress);
+        values.put(TableStrings.compositeState, compositeState);
+        values.put(TableStrings.enableStreamingTimestamp, enableStreamingTimestamp);
+        values.put(TableStrings.endedEarly, endedEarly);
+        values.put(TableStrings.initialPatchInformation, initialPatchInformation);
+        values.put(TableStrings.lastScanSampleNumber, lastScanSampleNumber);
+        values.put(TableStrings.lastScanTimeZone, lastScanTimeZone);
+        values.put(TableStrings.lastScanTimestampLocal, lastScanTimestampLocal);
+        values.put(TableStrings.lastScanTimestampUTC, lastScanTimestampUTC);
+        values.put(TableStrings.lsaDetected, lsaDetected);
+        values.put(TableStrings.measurementState, measurementState);
+        values.put(TableStrings.personalizationIndex, personalizationIndex);
+        // не нужно писать sensorId, так как это значение само увеличивается при добавлении записи.
+        values.put(TableStrings.sensorStartTimeZone, sensorStartTimeZone);
+        values.put(TableStrings.sensorStartTimestampLocal, sensorStartTimestampLocal);
+        values.put(TableStrings.sensorStartTimestampUTC, sensorStartTimestampUTC);
+        values.put(TableStrings.serialNumber, serialNumber);
+        values.put(TableStrings.streamingAuthenticationData, streamingAuthenticationData);
+        values.put(TableStrings.streamingUnlockCount, streamingUnlockCount);
+        values.put(TableStrings.uniqueIdentifier, uniqueIdentifier);
+        values.put(TableStrings.unrecordedHistoricTimeChange, unrecordedHistoricTimeChange);
+        values.put(TableStrings.unrecordedRealTimeTimeChange, unrecordedRealTimeTimeChange);
+        values.put(TableStrings.userId, userId);
+        values.put(TableStrings.warmupPeriodInMinutes, warmupPeriodInMinutes);
+        values.put(TableStrings.wearDurationInMinutes, wearDurationInMinutes);
+        values.put(TableStrings.CRC, CRC);
+
+        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        this.onTableChanged();
+    }
+
+    private void updateLastSensorRecord() throws Exception {
         final byte[] messageAttenuationState = libreMessage.getLibreSavedState().getAttenuationState();
         final byte[] messageCompositeState = libreMessage.getLibreSavedState().getCompositeState();
 
@@ -80,7 +161,7 @@ public class SensorTable implements CrcTable, TimeTable {
         this.lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
         this.lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
         this.lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
-        long computedCRC = this.computeCRC32();
+        this.CRC = this.computeCRC32();
 
         String sql = String.format("UPDATE %s SET %s=%s, %s=%s, %s=%s, %s=%s, %s=?, %s=?, %s=%s WHERE %s=%s;",
                 TableStrings.TABLE_NAME,
@@ -90,30 +171,48 @@ public class SensorTable implements CrcTable, TimeTable {
                 TableStrings.lastScanTimestampUTC, lastScanTimestampUTC,
                 TableStrings.attenuationState,
                 TableStrings.compositeState,
-                TableStrings.CRC, computedCRC,
+                TableStrings.CRC, CRC,
                 TableStrings.sensorId, this.sensorId);
 
-        SQLiteStatement statement = db.compileStatement(sql);
+        try (SQLiteStatement statement = db.getObject().compileStatement(sql)) {
 
-        if (attenuationState != null) {
-            statement.bindBlob(1, attenuationState);
-        } else {
-            statement.bindNull(1);
+            if (attenuationState != null) {
+                statement.bindBlob(1, attenuationState);
+            } else {
+                statement.bindNull(1);
+            }
+
+            if (compositeState != null) {
+                statement.bindBlob(2, compositeState);
+            } else {
+                statement.bindNull(2);
+            }
+
+            statement.execute();
         }
-
-        if (compositeState != null) {
-            statement.bindBlob(2, compositeState);
-        } else {
-            statement.bindNull(2);
-        }
-
-        statement.execute();
 
         this.onTableChanged();
     }
 
-    private void onTableChanged() throws Exception {
+    public void updateToLastScan() throws Exception {
+        SqlUtils.validateTime(this, libreMessage);
+
+        if(isTableNull() || isSensorExpired(libreMessage.getSensorStartTimestampUTC())){
+            this.createNewSensorRecord();
+            sensorSelectionRangeTable.createNewSensorRecord();
+        }
+        else {
+            this.updateLastSensorRecord();
+        }
+    }
+    @Override
+    public void onTableChanged() throws Exception {
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
+    }
+
+    @Override
+    public void onTableClassInit() throws Exception {
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
 
     @Override
@@ -134,7 +233,7 @@ public class SensorTable implements CrcTable, TimeTable {
         this.sensorId = ((Long) this.getRelatedValueForLastSensorId(TableStrings.sensorId)).intValue();
         this.sensorStartTimeZone = (String) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimeZone);
         this.sensorStartTimestampLocal = (long) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimestampLocal);
-        this.sensorStartTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.getSensorStartTimestampUTC);
+        this.sensorStartTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimestampUTC);
         this.serialNumber = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
         this.streamingAuthenticationData = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.streamingAuthenticationData);
         this.streamingUnlockCount = ((Long) this.getRelatedValueForLastSensorId(TableStrings.streamingUnlockCount)).intValue();
@@ -216,7 +315,7 @@ public class SensorTable implements CrcTable, TimeTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
     }
 
     private byte[] attenuationState;
@@ -265,7 +364,7 @@ public class SensorTable implements CrcTable, TimeTable {
         final static String sensorId = "sensorId";
         final static String sensorStartTimeZone = "sensorStartTimeZone";
         final static String sensorStartTimestampLocal = "sensorStartTimestampLocal";
-        final static String getSensorStartTimestampUTC = "sensorStartTimestampUTC";
+        final static String sensorStartTimestampUTC = "sensorStartTimestampUTC";
         final static String serialNumber = "serialNumber";
         final static String streamingAuthenticationData = "streamingAuthenticationData";
         final static String streamingUnlockCount = "streamingUnlockCount";

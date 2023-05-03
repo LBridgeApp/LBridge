@@ -41,7 +41,7 @@ public class LibreMessage {
         return historicBgs;
     }
 
-    public enum MessageLockingStatus {UNLOCKED, SENSOR_NOT_ACTIVATED, SENSOR_STARTING, SENSOR_EXPIRED, SENSOR_FAILURE, SENSOR_UNKNOWN_STATUS, MESSAGE_ALREADY_SENT}
+    public enum MessageLockingStatus {UNLOCKED, SENSOR_NOT_ACTIVATED, SENSOR_STARTING, SENSOR_EXPIRED, SENSOR_FAILURE, SENSOR_UNKNOWN_STATUS, MESSAGE_ALREADY_ADDED_TO_DB}
 
     private MessageLockingStatus lockingStatus = MessageLockingStatus.UNLOCKED;
 
@@ -65,7 +65,7 @@ public class LibreMessage {
     }
 
     public void onAddedToDatabase() {
-        this.lockFromAddingToDB(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_SENT);
+        this.lockFromAddingToDB(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_ADDED_TO_DB);
     }
 
     private LibreMessage(RawLibreData rawLibreData, LibreSavedState libreSavedState, String libreSN, OOPResults oopResults) throws Exception {
@@ -88,7 +88,7 @@ public class LibreMessage {
             return;
         }
 
-        if (sensorTimeMinutes < 60) {
+        if (sensorTimeMinutes <= 60) {
             lockFromAddingToDB(MessageLockingStatus.SENSOR_STARTING);
             return;
         }
@@ -125,5 +125,12 @@ public class LibreMessage {
                 || currentBg.convertBG(GlucoseUnit.MMOL).getBG() == 0.0) {
             throw new Exception("LibreMessage is not valid.");
         }
+    }
+
+    public long getSensorStartTimestampLocal(){
+        return Payload.getSensorStartTimestampLocal(this.getRawLibreData().getTimestamp(), this.getRawLibreData().getPayload());
+    }
+    public long getSensorStartTimestampUTC(){
+        return Payload.getSensorStartTimestampUTC(this.getRawLibreData().getTimestamp(), this.getRawLibreData().getPayload());
     }
 }

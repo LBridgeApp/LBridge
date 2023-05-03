@@ -3,9 +3,7 @@ package com.oop1;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.TimeZone;
 
@@ -46,7 +44,7 @@ public class CurrentBg {
     }
 
     public long getTimestampLocal() {
-        return Utils.getUtcTimestampAsLocal(scanUnixTimestamp);
+        return Utils.getLocalTimestampFromUtc(scanUnixTimestamp);
     }
 
     public String getTimeZone() {

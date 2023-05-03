@@ -5,7 +5,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 public class Utils {
-    public static long getUtcTimestampAsLocal(long timestampUTC){
+    public static long getLocalTimestampFromUtc(long timestampUTC){
         // Метод toEpochMilli не учитывает временную зону.
         // Класс LocalDateTime не знает, какая у него временная зона.
         // хитрость в том, что нужно локальное время записать как UTC.

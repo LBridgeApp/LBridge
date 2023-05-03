@@ -29,7 +29,7 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
                 "Port: %s\n" +
                 "Phone network: localhost\n" +
                 "Another networks:\n%s\n", serverPort, getIPs());
-        Notification.HTTP_SERVER.update(text);
+        Notification.HTTP_SERVER.showOrUpdate(text);
     }
 
     private String getIPs() {

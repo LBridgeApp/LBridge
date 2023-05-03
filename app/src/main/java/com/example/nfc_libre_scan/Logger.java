@@ -1,5 +1,7 @@
 package com.example.nfc_libre_scan;
 
+import static com.example.nfc_libre_scan.App.TAG;
+
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -27,7 +29,6 @@ public class Logger {
 
     private static final Logger instance = new Logger();
     private static final List<LogListener> logListeners = new ArrayList<>();
-    private static final String TAG = App.getInstance().getApplicationContext().getString(R.string.app_name);
     private static final DateTimeFormatter dbTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
 
     public static void setLoggerListener(LogListener listener) {

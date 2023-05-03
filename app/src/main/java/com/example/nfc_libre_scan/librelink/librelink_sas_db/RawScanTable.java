@@ -1,7 +1,6 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
 
@@ -11,24 +10,29 @@ import java.io.IOException;
 import java.util.zip.CRC32;
 
 public class RawScanTable implements CrcTable, TimeTable {
-    private final SQLiteDatabase db;
+    private final LibreLinkDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
 
-    public RawScanTable(SQLiteDatabase db, SensorTable sensorTable, LibreMessage libreMessage) throws Exception {
+    public RawScanTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.sensorTable = sensorTable;
-        this.libreMessage = libreMessage;
+        this.sensorTable = db.getSensorTable();
+        this.libreMessage = db.getLibreMessage();
 
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
+        this.onTableClassInit();
     }
 
     private Integer getLastStoredScanId() {
-        return SqlUtils.getLastStoredFieldValue(db, TableStrings.scanId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.scanId, TableStrings.TABLE_NAME);
     }
     private Object getRelatedValueForLastScanId(String fieldName) {
         final Integer lastStoredScanId = getLastStoredScanId();
-        return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastStoredScanId);
+        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastStoredScanId);
+    }
+
+    @Override
+    public void onTableClassInit() throws Exception {
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
     }
 
     @Override
@@ -78,7 +82,7 @@ public class RawScanTable implements CrcTable, TimeTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
@@ -91,7 +95,7 @@ public class RawScanTable implements CrcTable, TimeTable {
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
         this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
         this.timestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
-        long computedCRC = this.computeCRC32();
+        this.CRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();
         values.put(TableStrings.patchInfo, patchInfo);
@@ -101,13 +105,14 @@ public class RawScanTable implements CrcTable, TimeTable {
         values.put(TableStrings.timeZone, timeZone);
         values.put(TableStrings.timestampLocal, timestampLocal);
         values.put(TableStrings.timestampUTC, timestampUTC);
-        values.put(TableStrings.CRC, computedCRC);
+        values.put(TableStrings.CRC, CRC);
 
-        db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
 
-    private void onTableChanged() throws Exception {
+    @Override
+    public void onTableChanged() throws Exception {
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 

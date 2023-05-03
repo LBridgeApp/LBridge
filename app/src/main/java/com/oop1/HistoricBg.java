@@ -1,9 +1,7 @@
 package com.oop1;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.TimeZone;
 
@@ -40,7 +38,7 @@ public class HistoricBg {
     }
 
     public long getTimestampLocal() {
-        return Utils.getUtcTimestampAsLocal(this.getTimestampUTC());
+        return Utils.getLocalTimestampFromUtc(this.getTimestampUTC());
     }
 
     public String getTimeZone() {

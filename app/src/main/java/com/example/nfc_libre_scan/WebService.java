@@ -3,7 +3,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Binder;
 import android.os.IBinder;
 
 import com.example.nfc_libre_scan.librelink.LibreLink;
@@ -11,8 +10,6 @@ import com.example.nfc_libre_scan.librelink.LibreLink;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.util.List;
 
 public class WebService extends Service {
     private WebServer server;
@@ -65,7 +62,7 @@ public class WebService extends Service {
             String errorMsg = String.format("IMPORTANT: SERVICE STOPPED!\n" +
                     "See logs. Error msg:\n" +
                     "%s", e.getMessage());
-            Notification.SERVICE_STOPPED.update(errorMsg);
+            Notification.SERVICE_STOPPED.showOrUpdate(errorMsg);
             this.stopSelf();
         }
         return START_STICKY;

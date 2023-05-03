@@ -2,7 +2,6 @@ package com.example.nfc_libre_scan;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.graphics.Color;
 
@@ -19,7 +18,7 @@ public enum Notification {
         }
 
         @Override
-        protected void update(String contextText) {
+        protected void showOrUpdate(String contextText) {
             NotificationCompat.Builder builder = this.getBuilder();
             builder.setContentText(contextText);
             notificationManager.notify(this.getId(), builder.build());
@@ -75,7 +74,7 @@ public enum Notification {
         }
 
         @Override
-        protected void update(String contextText) {
+        protected void showOrUpdate(String contextText) {
             NotificationCompat.Builder builder = this.getBuilder();
             builder.setContentText(contextText);
             notificationManager.notify(this.getId(), builder.build());
@@ -107,9 +106,6 @@ public enum Notification {
         }
 
         protected String getChannelId() {
-            // несмотря на то, что фактически это канал
-            // WebService, LibreLink на нем висит.
-            // поэтому намеренно так назвал.
             return "CRITICAL_ERROR_CHANNEL";
         }
 
@@ -135,7 +131,7 @@ public enum Notification {
         }
 
         @Override
-        protected void update(String contextText) {
+        protected void showOrUpdate(String contextText) {
             NotificationCompat.Builder builder = this.getBuilder();
             builder.setContentText(contextText);
             notificationManager.notify(this.getId(), builder.build());
@@ -189,7 +185,7 @@ public enum Notification {
     }
 
     protected abstract void createChannel();
-    protected abstract void update(String contextText);
+    protected abstract void showOrUpdate(String contextText);
     protected abstract void cancel();
     protected abstract int getId();
     protected abstract NotificationCompat.Builder getBuilder();

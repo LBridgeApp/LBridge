@@ -6,7 +6,6 @@ import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.App;
 import com.example.nfc_libre_scan.LibreLinkActivityListener;
@@ -17,10 +16,7 @@ import com.example.nfc_libre_scan.PermissionLib;
 import com.example.nfc_libre_scan.RootLib;
 import com.example.nfc_libre_scan.WebService;
 import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.HistoricReadingTable;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.RawScanTable;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.RealTimeReadingTable;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,31 +114,8 @@ public class LibreLink implements LibreMessageListener {
     }
 
     private void editDatabase() throws Exception {
-        SQLiteDatabase db = SQLiteDatabase.openDatabase(context.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
-        Logger.ok("database opened. Trying to write...");
-
-        try {
-            SensorTable sensorTable = new SensorTable(db, libreMessage);
-            RawScanTable rawScanTable = new RawScanTable(db, sensorTable, libreMessage);
-            RealTimeReadingTable realTimeReadingTable = new RealTimeReadingTable(db, sensorTable, libreMessage);
-            HistoricReadingTable historicReadingTable = new HistoricReadingTable(db, sensorTable, libreMessage);
-
-            db.beginTransaction();
-
-            sensorTable.updateToLastScan();
-            rawScanTable.addLastSensorScan();
-            realTimeReadingTable.addLastSensorScan();
-            historicReadingTable.addLastSensorScan();
-
-            db.setTransactionSuccessful();
-
-            db.endTransaction();
-            db.close();
-        } catch (Exception e) {
-            db.endTransaction();
-            db.close();
-            throw e;
-        }
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        libreLinkDatabase.patchWithLastScan();
     }
 
     @Override

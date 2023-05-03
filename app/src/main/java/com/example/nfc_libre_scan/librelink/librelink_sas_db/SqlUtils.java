@@ -53,8 +53,8 @@ public class SqlUtils {
         if(!table.isTableNull()){
             long tableLastTimestampUTC = table.getLastUTCTimestamp();
             long libreMessageTimestampUTC = libreMessage.getRawLibreData().getTimestamp();
-            if(libreMessageTimestampUTC < tableLastTimestampUTC){
-                throw new Exception("Current LibreMessage UTC time is less, than table last UTC time");
+            if(libreMessageTimestampUTC <= tableLastTimestampUTC){
+                throw new Exception("Current LibreMessage UTC time is less or equals table last UTC time");
             }
         }
     }

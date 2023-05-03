@@ -1,7 +1,6 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.GlucoseUnit;
@@ -12,25 +11,25 @@ import java.io.IOException;
 import java.util.zip.CRC32;
 
 public class RealTimeReadingTable implements CrcTable, TimeTable {
-    private final SQLiteDatabase db;
+    private final LibreLinkDatabase db;
     private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
 
-    public RealTimeReadingTable(SQLiteDatabase db, SensorTable sensorTable, LibreMessage libreMessage) throws Exception {
+    public RealTimeReadingTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.sensorTable = sensorTable;
-        this.libreMessage = libreMessage;
+        this.sensorTable = db.getSensorTable();
+        this.libreMessage = db.getLibreMessage();
 
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
+        this.onTableClassInit();
     }
 
     private Integer getLastStoredReadingId() {
-        return SqlUtils.getLastStoredFieldValue(db, TableStrings.readingId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.readingId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
         final Integer lastStoredReadingId = getLastStoredReadingId();
-        return SqlUtils.getRelatedValue(db, fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
+        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
     private int computeAlarm() {
@@ -52,6 +51,11 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
         }
     }
 
+
+    @Override
+    public void onTableClassInit() throws Exception {
+        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
+    }
 
     @Override
     public void fillByLastRecord() {
@@ -108,7 +112,7 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db, TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
@@ -125,7 +129,7 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
         this.timestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
         this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
         this.trendArrow = libreMessage.getCurrentBg().getCurrentTrend().toValue();
-        long computedCRC = this.computeCRC32();
+        this.CRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();
         values.put(TableStrings.alarm, alarm);
@@ -140,13 +144,13 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
         values.put(TableStrings.timestampUTC, timestampUTC);
         values.put(TableStrings.timestampLocal, timestampLocal);
         values.put(TableStrings.trendArrow, trendArrow);
-        values.put(TableStrings.CRC, computedCRC);
+        values.put(TableStrings.CRC, CRC);
 
-        db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
-
-    private void onTableChanged() throws Exception {
+    @Override
+    public void onTableChanged() throws Exception {
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 
