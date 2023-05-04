@@ -2,11 +2,8 @@ package com.example.nfc_libre_scan;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -169,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
-        getMenuInflater().inflate(R.menu.menu, menu);
+        getMenuInflater().inflate(R.menu.menu_main_activity, menu);
         return true;
     }
 
@@ -186,6 +183,13 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         }
         else if(item.getItemId() == R.id.stopService){
             WebService.stopService();
+        }
+        else if(item.getItemId() == R.id.goto_developing_options){
+            Intent intent = new Intent(this, DevelopingActivity.class);
+            this.startActivity(intent);
+        }
+        else if(item.getItemId() == R.id.exit){
+            this.finish();
         }
         return super.onOptionsItemSelected(item);
     }

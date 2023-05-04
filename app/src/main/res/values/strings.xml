@@ -19,4 +19,9 @@
     <string name="set_draw_overlay_permission">Set Draw Overlay Permission</string>
     <string name="start_web_service">Start web service</string>
     <string name="stop_web_service">Stop web service</string>
+    <string name="set_fake_serial_number_for_last_sensor">SET FAKE SERIAL NUMBER FOR LAST SENSOR</string>
+    <string name="for_developers">For Developers</string>
+    <string name="end_current_sensor">End current sensor</string>
+    <string name="use_offline_mode_with_subsequent_database_deletion_data_that_will_be_overwritten_may_already_be_synchronized_with_libreview">USE OFFLINE MODE WITH SUBSEQUENT DATABASE DELETION. DATA THAT WILL BE OVERWRITTEN MAY ALREADY BE SYNCHRONIZED WITH LIBREVIEW.</string>
+    <string name="exit">Exit</string>
 </resources>

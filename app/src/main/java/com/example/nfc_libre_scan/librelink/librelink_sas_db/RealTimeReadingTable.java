@@ -2,6 +2,7 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
 
+import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.GlucoseUnit;
 
@@ -12,24 +13,20 @@ import java.util.zip.CRC32;
 
 public class RealTimeReadingTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
-    private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
 
     public RealTimeReadingTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.sensorTable = db.getSensorTable();
         this.libreMessage = db.getLibreMessage();
-
-        this.onTableClassInit();
     }
 
     private Integer getLastStoredReadingId() {
-        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.readingId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.readingId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
         final Integer lastStoredReadingId = getLastStoredReadingId();
-        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
+        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
     private int computeAlarm() {
@@ -112,7 +109,7 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
@@ -123,11 +120,11 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
         this.isActionable = true;
         this.rateOfChange = 0.0;
         // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
-        this.sensorId = sensorTable.getLastStoredSensorId();
+        this.sensorId = db.getSensorTable().getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
-        this.timestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
-        this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
+        this.timestampLocal = Utils.withoutNanos(libreMessage.getCurrentBg().getTimestampLocal());
+        this.timestampUTC = Utils.withoutNanos(libreMessage.getCurrentBg().getTimestampUTC());
         this.trendArrow = libreMessage.getCurrentBg().getCurrentTrend().toValue();
         this.CRC = this.computeCRC32();
 
@@ -146,7 +143,7 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
         values.put(TableStrings.trendArrow, trendArrow);
         values.put(TableStrings.CRC, CRC);
 
-        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        db.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
     @Override

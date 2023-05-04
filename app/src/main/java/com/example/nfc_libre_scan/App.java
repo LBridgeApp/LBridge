@@ -11,7 +11,7 @@ import java.util.List;
 public class App extends Application implements LibreLinkActivityListener {
     private static App instance;
 
-    public static final String TAG = App.getInstance().getApplicationContext().getString(R.string.app_name);
+    public static String TAG;
     public static App getInstance() {
         return instance;
     }
@@ -21,6 +21,7 @@ public class App extends Application implements LibreLinkActivityListener {
         super.onCreate();
         instance = this;
         new CriticalErrorHandler().setHandler();
+        App.TAG = this.getString(R.string.app_name);
         LibreLink.setLibreLinkActivityListener(this);
     }
 

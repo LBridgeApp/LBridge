@@ -11,13 +11,10 @@ import android.util.Log;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class Logger {
     private final SQLiteDatabase db;
@@ -207,7 +204,7 @@ public class Logger {
         }
 
         public LocalDateTime getDateTimeLocal() {
-            return Time.fromUtcToLocal(dateTimeUTC);
+            return Utils.fromUtcToLocal(dateTimeUTC);
         }
 
         public LocalDateTime getDateTimeUTC() {

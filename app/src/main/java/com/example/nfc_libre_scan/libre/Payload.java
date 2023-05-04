@@ -1,11 +1,10 @@
 package com.example.nfc_libre_scan.libre;
 
 import com.example.nfc_libre_scan.Logger;
-import com.oop1.Utils;
+import com.example.nfc_libre_scan.Utils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 
 public class Payload {
@@ -18,15 +17,18 @@ public class Payload {
 
     public static long getSensorStartTimestampLocal(long scanUnixTimestamp, byte[] payload){
         long timestampUTC = Payload.getSensorStartTimestampUTC(scanUnixTimestamp, payload);
-        return Utils.getLocalTimestampFromUtc(timestampUTC);
+        return Utils.withoutNanos(Utils.unixAsLocal(timestampUTC));
     }
 
     public static long getSensorStartTimestampUTC(long scanUnixTimestamp, byte[] payload){
+        // TODO: проверить это, сравнив значение этого метода и то, что записано официально в базе.
         int sensorTimeInMinutes = Payload.getSensorTimeInMinutes(payload);
         Instant scanTimestampAsInstant = Instant.ofEpochMilli(scanUnixTimestamp);
         LocalDateTime scanTimeStampAsDateTime = LocalDateTime.ofInstant(scanTimestampAsInstant, ZoneOffset.UTC);
         return scanTimeStampAsDateTime
                 .minusMinutes(sensorTimeInMinutes)
+                // поле startTimestamp оканчиваются на 000, поэтому наносекунды убираются.
+                .withNano(0)
                 .toInstant(ZoneOffset.UTC)
                 .toEpochMilli();
     }

@@ -2,6 +2,7 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.libre.LibreMessage;
@@ -18,7 +19,6 @@ public class LibreLinkDatabase {
     private final SensorTable sensorTable;
     private final UserTable userTable;
 
-
     public LibreLinkDatabase(Context context, LibreMessage libreMessage) throws Exception {
         this.db = SQLiteDatabase.openDatabase(context.getDatabasePath("sas.db").getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
         this.context = context;
@@ -30,6 +30,13 @@ public class LibreLinkDatabase {
         sensorSelectionRangeTable = new SensorSelectionRangeTable(this);
         sensorTable = new SensorTable(this);
         userTable = new UserTable(this);
+
+        historicReadingTable.onTableClassInit();
+        rawScanTable.onTableClassInit();
+        realTimeReadingTable.onTableClassInit();
+        sensorSelectionRangeTable.onTableClassInit();
+        sensorTable.onTableClassInit();
+        userTable.onTableClassInit();
     }
 
     public void patchWithLastScan() throws Exception {
@@ -51,7 +58,38 @@ public class LibreLinkDatabase {
         }
     }
 
-    protected SQLiteDatabase getObject(){
+    public void setFakeSerialNumberForLastSensor() throws Exception {
+        try {
+            db.beginTransaction();
+            this.sensorTable.setFakeSerialNumberForLastSensor();
+            db.setTransactionSuccessful();
+            db.endTransaction();
+            db.close();
+        } catch (Exception e){
+            Logger.error(e);
+            db.endTransaction();
+            db.close();
+            throw e;
+        }
+    }
+
+    public void endCurrentSensor() throws Exception {
+        try {
+            db.beginTransaction();
+            this.sensorTable.endCurrentSensor();
+            db.setTransactionSuccessful();
+            db.endTransaction();
+            db.close();
+        }
+        catch (Exception e){
+            Logger.error(e);
+            db.endTransaction();
+            db.close();
+            throw e;
+        }
+    }
+
+    protected SQLiteDatabase getSQLite(){
         return db;
     }
 

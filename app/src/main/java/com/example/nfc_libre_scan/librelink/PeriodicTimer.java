@@ -1,14 +1,13 @@
 package com.example.nfc_libre_scan.librelink;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
 import com.example.nfc_libre_scan.Logger;
-import com.example.nfc_libre_scan.Time;
+import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.WebService;
 
 import java.time.LocalDateTime;
@@ -68,7 +67,7 @@ public class PeriodicTimer extends BroadcastReceiver {
         long triggerTime = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(minutes);
 
         LocalDateTime nextUTC = LocalDateTime.ofEpochSecond(triggerTime / 1_000, 0, ZoneOffset.UTC);
-        LocalDateTime nextLocal = Time.fromUtcToLocal(nextUTC);
+        LocalDateTime nextLocal = Utils.fromUtcToLocal(nextUTC);
 
         String nextLocalString = String.format("%s",
                 nextLocal.format(DateTimeFormatter.ofPattern("HH:mm")));

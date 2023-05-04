@@ -2,7 +2,10 @@ package com.example.nfc_libre_scan;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -19,6 +22,7 @@ public class LogActivity extends AppCompatActivity implements View.OnClickListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_log);
+        setTitle(String.format("%s %s", this.getString(R.string.app_name), "Logs"));
 
         logTextView = this.findViewById(R.id.logTextView);
         Button removeLogDbBtn = this.findViewById(R.id.removeLogsDb);
@@ -81,5 +85,19 @@ public class LogActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     public void logReceived(Logger.LogRecord log) {
         appendLogAbove(log);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_log_activity, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.exit) {
+            this.onBackPressed();
+        }
+        return super.onOptionsItemSelected(item);
     }
 }

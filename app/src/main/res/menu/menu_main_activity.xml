@@ -16,4 +16,12 @@
         android:id="@+id/set_draw_overlay_permission"
         android:orderInCategory="4"
         android:title="@string/set_draw_overlay_permission" />
+    <item
+        android:id="@+id/goto_developing_options"
+        android:orderInCategory="5"
+        android:title="@string/for_developers" />
+    <item
+        android:id="@+id/exit"
+        android:orderInCategory="6"
+        android:title="@string/exit"/>
 </menu>

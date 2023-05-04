@@ -2,6 +2,7 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
 
+import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.oop1.GlucoseUnit;
 import com.oop1.HistoricBg;
@@ -14,24 +15,20 @@ import java.util.zip.CRC32;
 
 public class HistoricReadingTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
-    private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
 
     public HistoricReadingTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
         this.libreMessage = db.getLibreMessage();
-        this.sensorTable = db.getSensorTable();
-
-        this.onTableClassInit();
     }
 
     private Integer getLastStoredReadingId() {
-        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.readingId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.readingId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastReadingId(String fieldName) {
         final Integer lastStoredReadingId = getLastStoredReadingId();
-        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
+        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.readingId, lastStoredReadingId);
     }
 
     @Override
@@ -88,7 +85,7 @@ public class HistoricReadingTable implements CrcTable, TimeTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
@@ -109,11 +106,11 @@ public class HistoricReadingTable implements CrcTable, TimeTable {
         this.glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         // не нужно менять readingId, так как это значение само увеличивается при добавлении записи.
         this.sampleNumber = historicBg.getSampleNumber();
-        this.sensorId = sensorTable.getLastStoredSensorId();
+        this.sensorId = db.getSensorTable().getLastStoredSensorId();
         this.timeChangeBefore = 0;
         this.timeZone = historicBg.getTimeZone();
-        this.timestampLocal = historicBg.getTimestampLocal();
-        this.timestampUTC = historicBg.getTimestampUTC();
+        this.timestampLocal = Utils.withoutNanos(historicBg.getTimestampLocal());
+        this.timestampUTC = Utils.withoutNanos(historicBg.getTimestampUTC());
         this.CRC = this.computeCRC32();
 
         ContentValues values = new ContentValues();
@@ -127,7 +124,7 @@ public class HistoricReadingTable implements CrcTable, TimeTable {
         values.put(TableStrings.timestampLocal, timestampLocal);
         values.put(TableStrings.CRC, CRC);
 
-        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        db.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
     @Override

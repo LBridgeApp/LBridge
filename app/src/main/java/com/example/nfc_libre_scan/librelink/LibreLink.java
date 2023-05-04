@@ -67,20 +67,29 @@ public class LibreLink implements LibreMessageListener {
         }
 
         killLibreLink();
+        copyLibreLinkDatabaseToUs();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        libreLinkDatabase.patchWithLastScan();
+        Logger.ok("database edited.");
+        libreMessage.onAddedToDatabase();
+        copyLibreLinkDatabaseFromUs();
+        rootLib.removeFile(context.getDatabasePath("sas.db").getAbsolutePath());
+        Logger.ok("Database removed from our app");
+        startLibreLink();
+    }
+
+    private void copyLibreLinkDatabaseToUs() throws Exception {
         rootLib.copyFile(LibreLink.librelink_sas_db_path, ourDbPath);
         Logger.ok("db to our app copied");
         rootLib.setFilePermission(ourDbPath, 666);
         Logger.ok("Permission 666 set to db in our app");
-        editDatabase();
-        Logger.ok("database edited.");
-        libreMessage.onAddedToDatabase();
+    }
+
+    private void copyLibreLinkDatabaseFromUs() throws Exception {
         rootLib.copyFile(ourDbPath, LibreLink.librelink_sas_db_path);
         Logger.ok("edited db to librelink app copied!");
         rootLib.setFilePermission(LibreLink.librelink_sas_db_path, 660);
         Logger.ok("permission 660 set to db in librelink app");
-
-        startLibreLink();
-
     }
     private void startLibreLink() throws Exception {
         // Несмотря на проверку в конструкторе...
@@ -113,14 +122,27 @@ public class LibreLink implements LibreMessageListener {
         Logger.ok("LibreLink dbs removed");
     }
 
-    private void editDatabase() throws Exception {
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
-        libreLinkDatabase.patchWithLastScan();
-    }
-
     @Override
     public void libreMessageReceived(LibreMessage libreMessage) {
         Logger.ok("New LibreMessage received.");
         this.libreMessage = libreMessage;
+    }
+
+    public void setFakeSerialNumberForLastSensor() throws Exception {
+        this.killLibreLink();
+        this.copyLibreLinkDatabaseToUs();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        libreLinkDatabase.setFakeSerialNumberForLastSensor();
+        Logger.ok("Fake serial number set to last sensor");
+        this.copyLibreLinkDatabaseFromUs();
+    }
+
+    public void endCurrentSensor() throws Exception {
+        this.killLibreLink();
+        this.copyLibreLinkDatabaseToUs();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        libreLinkDatabase.endCurrentSensor();
+        Logger.ok("Current sensor has ended in librelink db.");
+        this.copyLibreLinkDatabaseFromUs();
     }
 }

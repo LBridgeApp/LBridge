@@ -18,7 +18,7 @@ public class SqlUtils {
         return null;
     }
 
-    protected static Object getRelatedValue(SQLiteDatabase db, String fieldName, String tableName, String whereFieldName, Integer whereCellValue) {
+    protected static Object getRelatedValue(SQLiteDatabase db, String fieldName, String tableName, String whereFieldName, Object whereCellValue) {
         String sql = String.format("SELECT %s FROM %s WHERE %s=%s;", fieldName, tableName, whereFieldName, whereCellValue);
         Cursor cursor = db.rawQuery(sql, null);
         cursor.moveToFirst();

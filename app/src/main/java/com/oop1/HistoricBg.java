@@ -1,5 +1,7 @@
 package com.oop1;
 
+import com.example.nfc_libre_scan.Utils;
+
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -38,7 +40,7 @@ public class HistoricBg {
     }
 
     public long getTimestampLocal() {
-        return Utils.getLocalTimestampFromUtc(this.getTimestampUTC());
+        return Utils.unixAsLocal(this.getTimestampUTC());
     }
 
     public String getTimeZone() {

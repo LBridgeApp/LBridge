@@ -1,14 +1,13 @@
 package com.example.nfc_libre_scan.libre;
 
 import static com.example.nfc_libre_scan.App.TAG;
-import static com.oop1.Utils.byteArrayToHex;
+import static com.example.nfc_libre_scan.Utils.byteArrayToHex;
 
 import android.util.Log;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 public class PatchUID {
     private static final String[] lookupTable =
@@ -116,18 +115,16 @@ public class PatchUID {
         SecureRandom random = new SecureRandom();
         byte[] patchUID = new byte[8];
 
+        patchUID[0] = (byte) (Byte.MIN_VALUE + random.nextInt((Byte.MAX_VALUE + 1) * 2));
+        patchUID[1] = (byte) (Byte.MIN_VALUE + random.nextInt((Byte.MAX_VALUE + 1) * 2));
+        byte[] secondBytes = new byte[]{ 80, -80, 112, 99 };
+        patchUID[2] = secondBytes[random.nextInt(secondBytes.length)];
         // постоянные байты
         patchUID[3] = 0x0b;
         patchUID[4] = 0x00;
         patchUID[5] = (byte) 0xa0;
         patchUID[6] = 0x07;
         patchUID[7] = (byte) 0xe0;
-
-        byte[] secondBytes = new byte[]{ 80, -80, 112, 99 };
-
-        patchUID[0] = (byte) (Byte.MIN_VALUE + random.nextInt((Byte.MAX_VALUE + 1) * 2));
-        patchUID[1] = (byte) (Byte.MIN_VALUE + random.nextInt((Byte.MAX_VALUE + 1) * 2));
-        patchUID[2] = secondBytes[random.nextInt(secondBytes.length)];
 
         return patchUID;
     }

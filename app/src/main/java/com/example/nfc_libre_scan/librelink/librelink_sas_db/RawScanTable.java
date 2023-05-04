@@ -11,23 +11,19 @@ import java.util.zip.CRC32;
 
 public class RawScanTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
-    private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
 
     public RawScanTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.sensorTable = db.getSensorTable();
         this.libreMessage = db.getLibreMessage();
-
-        this.onTableClassInit();
     }
 
     private Integer getLastStoredScanId() {
-        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.scanId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.scanId, TableStrings.TABLE_NAME);
     }
     private Object getRelatedValueForLastScanId(String fieldName) {
         final Integer lastStoredScanId = getLastStoredScanId();
-        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastStoredScanId);
+        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.scanId, lastStoredScanId);
     }
 
     @Override
@@ -82,7 +78,7 @@ public class RawScanTable implements CrcTable, TimeTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
     }
 
     public void addLastSensorScan() throws Exception {
@@ -91,7 +87,7 @@ public class RawScanTable implements CrcTable, TimeTable {
         this.patchInfo = libreMessage.getRawLibreData().getPatchInfo();
         this.payload = libreMessage.getRawLibreData().getPayload();
         // не нужно менять scanId, так как это значение само увеличивается при добавлении записи.
-        this.sensorId = sensorTable.getLastStoredSensorId();
+        this.sensorId = db.getSensorTable().getLastStoredSensorId();
         this.timeZone = libreMessage.getCurrentBg().getTimeZone();
         this.timestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
         this.timestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
@@ -107,7 +103,7 @@ public class RawScanTable implements CrcTable, TimeTable {
         values.put(TableStrings.timestampUTC, timestampUTC);
         values.put(TableStrings.CRC, CRC);
 
-        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        db.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
 

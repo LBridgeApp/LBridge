@@ -1,6 +1,7 @@
 package com.oop1;
 
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.TrendArrow;
+import com.example.nfc_libre_scan.Utils;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -44,7 +45,7 @@ public class CurrentBg {
     }
 
     public long getTimestampLocal() {
-        return Utils.getLocalTimestampFromUtc(scanUnixTimestamp);
+        return Utils.unixAsLocal(scanUnixTimestamp);
     }
 
     public String getTimeZone() {

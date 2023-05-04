@@ -10,7 +10,6 @@ public class UserTable implements CrcTable {
 
     public UserTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.onTableClassInit();
     }
 
     @Override
@@ -50,7 +49,7 @@ public class UserTable implements CrcTable {
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
     }
 
     @Override
@@ -59,12 +58,12 @@ public class UserTable implements CrcTable {
     }
 
     protected Integer getLastStoredUserId() {
-        return SqlUtils.getLastStoredFieldValue(db.getObject(), TableStrings.userId, TableStrings.TABLE_NAME);
+        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.userId, TableStrings.TABLE_NAME);
     }
 
     private Object getRelatedValueForLastUserId(String fieldName) {
         final Integer lastStoredUserId = getLastStoredUserId();
-        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.userId, lastStoredUserId);
+        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.userId, lastStoredUserId);
     }
 
     private String name;

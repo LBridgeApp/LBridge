@@ -46,6 +46,9 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
 
     @Override
     public void onTagDiscovered(Tag tag) {
+        // TODO: проблема с ядром.
+        // почему-то зависание интерфейса при сканировании.
+        // хотя в прошлых коммитах такого не было.
         Logger.ok("Libre tag discovered");
         Vibrator.SCAN_START.vibrate(activity);
         try (NfcV nfcVTag = NfcV.get(tag)) {

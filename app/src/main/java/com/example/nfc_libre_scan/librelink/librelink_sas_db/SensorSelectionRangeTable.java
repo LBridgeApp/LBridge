@@ -1,6 +1,7 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
 import android.content.ContentValues;
+import android.database.sqlite.SQLiteStatement;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
 
@@ -12,15 +13,11 @@ import java.util.zip.CRC32;
 public class SensorSelectionRangeTable implements CrcTable, TimeTable {
 
     private final LibreLinkDatabase db;
-    private final SensorTable sensorTable;
     private final LibreMessage libreMessage;
 
     SensorSelectionRangeTable(LibreLinkDatabase db) throws Exception {
         this.db = db;
-        this.sensorTable = db.getSensorTable();
         this.libreMessage = db.getLibreMessage();
-
-        this.onTableClassInit();
     }
     @Override
     public void onTableClassInit() throws Exception {
@@ -29,10 +26,11 @@ public class SensorSelectionRangeTable implements CrcTable, TimeTable {
 
     @Override
     public void fillByLastRecord() {
-        this.endTimestampUTC = (Long) this.getRelatedValueForLastSensorId(TableStrings.endTimestampUTC);
-        this.rangeId = ((Long)this.getRelatedValueForLastSensorId(TableStrings.rangeId)).intValue();
-        this.sensorId = ((Long) this.getRelatedValueForLastSensorId(TableStrings.sensorId)).intValue();
-        this.startTimestampUTC = (Long) this.getRelatedValueForLastSensorId(TableStrings.startTimestampUTC);
+        this.endTimestampUTC = (long) this.getRelatedValueForLastRangeId(TableStrings.endTimestampUTC);
+        this.rangeId = ((Long)this.getRelatedValueForLastRangeId(TableStrings.rangeId)).intValue();
+        this.sensorId = ((Long) this.getRelatedValueForLastRangeId(TableStrings.sensorId)).intValue();
+        this.startTimestampUTC = (long) this.getRelatedValueForLastRangeId(TableStrings.startTimestampUTC);
+        this.CRC = (long) this.getRelatedValueForLastRangeId(TableStrings.CRC);
     }
 
     @Override
@@ -62,32 +60,73 @@ public class SensorSelectionRangeTable implements CrcTable, TimeTable {
 
     @Override
     public long getLastUTCTimestamp() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.startTimestampUTC);
+        return (long) this.getRelatedValueForLastRangeId(TableStrings.startTimestampUTC);
     }
 
     @Override
     public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getObject(), TableStrings.TABLE_NAME);
+        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
     }
 
     @Override
     public void onTableChanged() throws Exception {
+        this.fillByLastRecord();
+
+        if(this.sensorId != this.rangeId){
+            throw new Exception("RangeId is not equals sensorId");
+        }
+
         SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
     }
 
-    private Object getRelatedValueForLastSensorId(String fieldName) {
-        final Integer lastStoredSensorId = sensorTable.getLastStoredSensorId();
-        return SqlUtils.getRelatedValue(db.getObject(), fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
+    private Object getRelatedValueForLastRangeId(String fieldName) {
+        final Integer lastStoredRangeId = this.getLastStoredRangeId();
+        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.rangeId, lastStoredRangeId);
     }
 
-    public void createNewSensorRecord() throws Exception {
+    protected void endCurrentSensor() throws Exception {
+        this.endTimestampUTC = System.currentTimeMillis();
+        this.CRC = computeCRC32();
+        this.rangeId = getLastStoredRangeId();
+
+        String sql = String.format("UPDATE %s SET %s=?, %s=? WHERE %s=?", TableStrings.TABLE_NAME,
+                TableStrings.endTimestampUTC,
+                TableStrings.CRC,
+                TableStrings.rangeId);
+
+        try (SQLiteStatement statement = db.getSQLite().compileStatement(sql)) {
+            statement.bindLong(1, endTimestampUTC);
+            statement.bindLong(2, CRC);
+            statement.bindLong(3, rangeId);
+            statement.execute();
+        }
+
+        this.onTableChanged();
+    }
+
+    public void patchWithNewSensor() throws Exception {
+        // а вот когда мы стартуем новый сенсор,
+        // вот тогда надо закончить сенсор здесь.
+        // см. private void onSensorEnded() класса SensorTable.
+        this.endCurrentSensor();
+        this.createNewSensorRecord();
+    }
+
+    private Integer getLastStoredRangeId() {
+        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.rangeId, TableStrings.TABLE_NAME);
+    }
+
+    private void createNewSensorRecord() throws Exception {
         SqlUtils.validateTime(this, libreMessage);
 
-        // не знаю почему, но в таблице LibreLink
-        // это значение указано как 9223372036854775807
+        // В таблице LibreLink для действующего сенсора
+        // значение конца времени действия равно
+        // 9223372036854775807
         this.endTimestampUTC = Long.MAX_VALUE;
-        this.rangeId = 1;
-        this.sensorId = sensorTable.getLastStoredSensorId();
+        // значение rangeId равно значению sensorId
+        // rangeId писать НУЖНО, так как автоматически он НЕ увеличивается.
+        this.rangeId = (this.getLastStoredRangeId() == null) ? 1 : this.getLastStoredRangeId() + 1;
+        this.sensorId = db.getSensorTable().getLastStoredSensorId();
         this.startTimestampUTC = libreMessage.getSensorStartTimestampUTC();
         this.CRC = computeCRC32();
 
@@ -98,7 +137,7 @@ public class SensorSelectionRangeTable implements CrcTable, TimeTable {
         values.put(TableStrings.startTimestampUTC, startTimestampUTC);
         values.put(TableStrings.CRC, CRC);
 
-        db.getObject().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        db.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
         this.onTableChanged();
     }
 

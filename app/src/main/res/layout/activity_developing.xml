@@ -1,0 +1,64 @@
+<RelativeLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <TextView
+        android:id="@+id/no_internet_text"
+        android:layout_width="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:layout_height="wrap_content"
+        android:text="@string/use_offline_mode_with_subsequent_database_deletion_data_that_will_be_overwritten_may_already_be_synchronized_with_libreview"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_centerHorizontal="true"/>
+
+    <Button
+        android:id="@+id/fake_serial_button"
+        android:layout_marginBottom="32dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/set_fake_serial_number_for_last_sensor"
+        android:layout_below="@id/no_internet_text"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:id="@+id/end_current_sensor_btn"
+        android:layout_marginBottom="32dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/end_current_sensor"
+        android:layout_below="@id/fake_serial_button"
+        android:layout_centerHorizontal="true"/>
+
+    <Button
+        android:id="@+id/removeLibrelinkDB"
+        android:layout_marginBottom="32dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/end_current_sensor_btn"
+        android:layout_centerHorizontal="true"
+        android:text="@string/remove_librelink_db" />
+
+    <Button
+        android:id="@+id/clearLogWindowBtn"
+        android:layout_marginBottom="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/removeLibrelinkDB"
+        android:layout_centerHorizontal="true"
+        android:text="@string/clear_log_window" />
+
+    <TextView
+        android:id="@+id/logTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="#000000"
+        android:padding="16dp"
+        android:layout_below="@+id/clearLogWindowBtn"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp" />
+
+</RelativeLayout>
