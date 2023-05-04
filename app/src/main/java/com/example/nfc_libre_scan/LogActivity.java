@@ -40,7 +40,7 @@ public class LogActivity extends AppCompatActivity implements View.OnClickListen
     }
 
     private void appendLogsBelow(){
-        int maxId = Logger.getLogRecordCount() - 1 - recordsLoaded;
+        int maxId = Logger.getLogRecordCount() - recordsLoaded;
         final int LOAD_LOGS_FOR_ONE_TIME = 10;
         int minId = maxId - LOAD_LOGS_FOR_ONE_TIME + 1;
         Logger.LogRecord[] logs = Logger.getLogs(minId, maxId);
@@ -52,7 +52,7 @@ public class LogActivity extends AppCompatActivity implements View.OnClickListen
             this.runOnUiThread(() -> logTextView.append(String.format("[%s] %s\n", log.getId(), log.toFullString())));
         }
         if(logs.length == 0){
-            this.runOnUiThread(() -> logTextView.append("END: NO MORE LOGS.\n"));
+            this.runOnUiThread(() -> logTextView.append("END: NO MORE LOGS\n"));
         }
     }
 
