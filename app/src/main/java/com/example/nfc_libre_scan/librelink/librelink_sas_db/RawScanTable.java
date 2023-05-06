@@ -13,7 +13,7 @@ public class RawScanTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
     private final LibreMessage libreMessage;
 
-    public RawScanTable(LibreLinkDatabase db) throws Exception {
+    public RawScanTable(LibreLinkDatabase db) {
         this.db = db;
         this.libreMessage = db.getLibreMessage();
     }

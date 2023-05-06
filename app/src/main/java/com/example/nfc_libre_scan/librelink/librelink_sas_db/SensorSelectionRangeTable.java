@@ -15,7 +15,7 @@ public class SensorSelectionRangeTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
     private final LibreMessage libreMessage;
 
-    SensorSelectionRangeTable(LibreLinkDatabase db) throws Exception {
+    SensorSelectionRangeTable(LibreLinkDatabase db) {
         this.db = db;
         this.libreMessage = db.getLibreMessage();
     }
@@ -108,7 +108,9 @@ public class SensorSelectionRangeTable implements CrcTable, TimeTable {
         // а вот когда мы стартуем новый сенсор,
         // вот тогда надо закончить сенсор здесь.
         // см. private void onSensorEnded() класса SensorTable.
-        this.endCurrentSensor();
+        if(!isTableNull()) {
+            this.endCurrentSensor();
+        }
         this.createNewSensorRecord();
     }
 

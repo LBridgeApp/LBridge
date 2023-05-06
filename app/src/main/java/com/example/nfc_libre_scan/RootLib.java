@@ -27,11 +27,15 @@ public class RootLib {
         }
     }
 
-    public void removeFile(final String filePath) throws Exception {
+    public boolean isFileExists(final String filePath) throws Exception {
         this.onRootNeeded();
         final String isFileExistsCmd = String.format("test -e %s", filePath);
-        boolean fileExists = this.runCmd(isFileExistsCmd);
-        if (!fileExists) {
+        return this.runCmd(isFileExistsCmd);
+    }
+
+    public void removeFile(final String filePath) throws Exception {
+        this.onRootNeeded();
+        if (!isFileExists(filePath)) {
             return;
         }
         final String fileRemovingCmd = String.format("rm %s", filePath);

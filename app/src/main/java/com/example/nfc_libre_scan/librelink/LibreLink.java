@@ -26,10 +26,13 @@ public class LibreLink implements LibreMessageListener {
     private static final String librelink_sas_db_path = "/data/data/com.freestylelibre.app.ru/files/sas.db";
     @SuppressLint("SdCardPath")
     private static final String librelink_apollo_db_path = "/data/data/com.freestylelibre.app.ru/files/apollo.db";
+
+    private static final String APOLLO_DB = "apollo.db";
+    private static final String SAS_DB = "sas.db";
+
     private LibreMessage libreMessage;
     private final Context context;
     private final RootLib rootLib;
-    private final String ourDbPath;
     private final PermissionLib permissionLib;
     private static final List<LibreLinkActivityListener> listeners = new ArrayList<>();
 
@@ -40,7 +43,6 @@ public class LibreLink implements LibreMessageListener {
 
         this.context = context;
         this.rootLib = new RootLib(context);
-        this.ourDbPath = context.getDatabasePath("sas.db").getAbsolutePath();
 
         if (context instanceof WebService) {
             PeriodicTimer timer = new PeriodicTimer(this, (WebService) context);
@@ -66,32 +68,82 @@ public class LibreLink implements LibreMessageListener {
             throw new Exception(String.format("That libre message locked.\nReason: %s", libreMessage.getLockingStatus()));
         }
 
-        killLibreLink();
-        copyLibreLinkDatabaseToUs();
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        killApp();
+        if(!isDatabasesExistsInLibreLinkApp()) {
+            // удаление в rootLib безопасно в плане отсутствия файлов.
+            // может отсутствовать одна база данных из двух,
+            // а удалить надо все.
+            this.removeDatabasesInLibreLinkApp();
+            this.createDatabasesInLibreLinkApp();
+        }
+        this.copySasDatabaseToUs();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this, libreMessage);
         libreLinkDatabase.patchWithLastScan();
         Logger.ok("database edited.");
         libreMessage.onAddedToDatabase();
-        copyLibreLinkDatabaseFromUs();
-        rootLib.removeFile(context.getDatabasePath("sas.db").getAbsolutePath());
-        Logger.ok("Database removed from our app");
-        startLibreLink();
+        this.copySasDatabaseFromUs();
+        this.removeDatabasesInOurApp();
+        Logger.ok("Databases removed from our app");
+        this.startApp();
     }
 
-    private void copyLibreLinkDatabaseToUs() throws Exception {
-        rootLib.copyFile(LibreLink.librelink_sas_db_path, ourDbPath);
-        Logger.ok("db to our app copied");
-        rootLib.setFilePermission(ourDbPath, 666);
-        Logger.ok("Permission 666 set to db in our app");
+    private void copySasDatabaseToUs() throws Exception {
+        String ourSasDbPath = context.getDatabasePath(SAS_DB).getAbsolutePath();
+
+        rootLib.copyFile(LibreLink.librelink_sas_db_path, ourSasDbPath);
+        Logger.ok("sas.db to our app copied");
+        rootLib.setFilePermission(ourSasDbPath, 666);
+        Logger.ok("Permission 666 set to sas.db in our app");
     }
 
-    private void copyLibreLinkDatabaseFromUs() throws Exception {
-        rootLib.copyFile(ourDbPath, LibreLink.librelink_sas_db_path);
-        Logger.ok("edited db to librelink app copied!");
-        rootLib.setFilePermission(LibreLink.librelink_sas_db_path, 660);
-        Logger.ok("permission 660 set to db in librelink app");
+    public void copySasDatabaseFromUs() throws Exception {
+        String ourSasDbPath = context.getDatabasePath(SAS_DB).getAbsolutePath();
+
+        rootLib.copyFile(ourSasDbPath, LibreLink.librelink_sas_db_path);
+        Logger.ok("sas.db to librelink app copied!");
+        rootLib.setFilePermission(LibreLink.librelink_sas_db_path, 666);
+        Logger.ok("permission 666 set to sas.db in librelink app");
     }
-    private void startLibreLink() throws Exception {
+
+    public void copyApolloDatabaseFromUs() throws Exception {
+        String ourApolloPath = context.getDatabasePath(APOLLO_DB).getAbsolutePath();
+
+        rootLib.copyFile(ourApolloPath, LibreLink.librelink_apollo_db_path);
+        Logger.ok("apollo.db to librelink app copied!");
+        rootLib.setFilePermission(LibreLink.librelink_apollo_db_path, 666);
+        Logger.ok("permission 666 set to apollo.db in librelink app");
+    }
+
+    public void removeDatabasesInOurApp() throws Exception {
+        rootLib.removeFile(context.getDatabasePath(APOLLO_DB).getAbsolutePath());
+        Logger.ok("apollo.db in our app removed.");
+        rootLib.removeFile(context.getDatabasePath(SAS_DB).getAbsolutePath());
+        Logger.ok("sas.db in our app removed.");
+    }
+
+    public void removeDatabasesInLibreLinkApp() throws Exception {
+        killApp();
+        rootLib.removeFile(LibreLink.librelink_sas_db_path);
+        rootLib.removeFile(LibreLink.librelink_apollo_db_path);
+        Logger.ok("databases in librelink app removed.");
+    }
+
+    public boolean isDatabasesExistsInLibreLinkApp() throws Exception {
+        return rootLib.isFileExists(librelink_apollo_db_path)
+                && rootLib.isFileExists(librelink_sas_db_path);
+    }
+
+    public void createDatabasesInLibreLinkApp() throws Exception {
+        killApp();
+        this.removeDatabasesInOurApp();
+        LibreLinkDatabase db = new LibreLinkDatabase(context, this, null);
+        db.createDatabasesInOurApp();
+        this.copySasDatabaseFromUs();
+        this.copyApolloDatabaseFromUs();
+        this.removeDatabasesInOurApp();
+    }
+
+    private void startApp() throws Exception {
         // Несмотря на проверку в конструкторе...
         // Если разрешение вдруг убрали,
         // из сервиса не получится корректно отправить сахар.
@@ -108,41 +160,33 @@ public class LibreLink implements LibreMessageListener {
         Logger.ok("LibreLink started");
     }
 
-    private void killLibreLink() {
+    private void killApp() {
         final String packageName = "com.freestylelibre.app.ru";
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         am.killBackgroundProcesses(packageName);
         Logger.ok("LibreLink killed");
     }
 
-    public void removeLibreLinkDatabases() throws Exception {
-        killLibreLink();
-        rootLib.removeFile(LibreLink.librelink_sas_db_path);
-        rootLib.removeFile(LibreLink.librelink_apollo_db_path);
-        Logger.ok("LibreLink dbs removed");
-    }
-
     @Override
     public void libreMessageReceived(LibreMessage libreMessage) {
-        Logger.ok("New LibreMessage received.");
         this.libreMessage = libreMessage;
     }
 
     public void setFakeSerialNumberForLastSensor() throws Exception {
-        this.killLibreLink();
-        this.copyLibreLinkDatabaseToUs();
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        this.killApp();
+        this.copySasDatabaseToUs();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this, libreMessage);
         libreLinkDatabase.setFakeSerialNumberForLastSensor();
-        Logger.ok("Fake serial number set to last sensor");
-        this.copyLibreLinkDatabaseFromUs();
+        Logger.ok("Fake serial number has been assigned to the last sensor");
+        this.copySasDatabaseFromUs();
     }
 
     public void endCurrentSensor() throws Exception {
-        this.killLibreLink();
-        this.copyLibreLinkDatabaseToUs();
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, libreMessage);
+        this.killApp();
+        this.copySasDatabaseToUs();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this, libreMessage);
         libreLinkDatabase.endCurrentSensor();
         Logger.ok("Current sensor has ended in librelink db.");
-        this.copyLibreLinkDatabaseFromUs();
+        this.copySasDatabaseFromUs();
     }
 }

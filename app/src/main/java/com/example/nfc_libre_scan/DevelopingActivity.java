@@ -23,25 +23,26 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
         logTextView = this.findViewById(R.id.logTextView);
         Logger.setLoggerListener(this);
 
-        Button databaseRemovingBtn = this.findViewById(R.id.removeLibrelinkDB);
+        Button removeLibreLinkDb = this.findViewById(R.id.removeLibrelinkDB);
         Button fakeSerialNumberBtn = findViewById(R.id.fake_serial_button);
         Button endCurrentSensorBtn = findViewById(R.id.end_current_sensor_btn);
         Button clearLogBtn = findViewById(R.id.clearLogWindowBtn);
+        Button createLibreLinkDb = findViewById(R.id.createLibreLinkDB);
 
         clearLogBtn.setOnClickListener(this);
         fakeSerialNumberBtn.setOnClickListener(this);
         endCurrentSensorBtn.setOnClickListener(this);
-        databaseRemovingBtn.setOnClickListener(this);
+        removeLibreLinkDb.setOnClickListener(this);
+        createLibreLinkDb.setOnClickListener(this);
     }
     @Override
     public void logReceived(Logger.LogRecord log) {
-        String b = String.format("%s\n", log.toShortString()) +
+        String b = String.format("%s\n", log.toFullString()) +
                 logTextView.getText();
         String[] logs = b.split("\n");
         StringBuilder b2 = new StringBuilder();
-        int logLinesCount = Math.min(logs.length, 10);
-        for (int i = 0; i < logLinesCount; i++) {
-            b2.append(String.format("%s\n", logs[i]));
+        for (String s : logs) {
+            b2.append(String.format("%s\n", s));
         }
         this.runOnUiThread(() -> logTextView.setText(b2));
     }
@@ -68,7 +69,15 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
         else if(v.getId() == R.id.removeLibrelinkDB){
             try {
                 LibreLink libreLink = new LibreLink(this);
-                libreLink.removeLibreLinkDatabases();
+                libreLink.removeDatabasesInLibreLinkApp();
+            } catch (Exception e) {
+                Logger.error(e);
+            }
+        }
+        else if(v.getId() == R.id.createLibreLinkDB){
+            try {
+                LibreLink libreLink = new LibreLink(this);
+                libreLink.createDatabasesInLibreLinkApp();
             } catch (Exception e) {
                 Logger.error(e);
             }

@@ -22,6 +22,9 @@
     <string name="set_fake_serial_number_for_last_sensor">SET FAKE SERIAL NUMBER FOR LAST SENSOR</string>
     <string name="for_developers">For Developers</string>
     <string name="end_current_sensor">End current sensor</string>
-    <string name="use_offline_mode_with_subsequent_database_deletion_data_that_will_be_overwritten_may_already_be_synchronized_with_libreview">USE OFFLINE MODE WITH SUBSEQUENT DATABASE DELETION. DATA THAT WILL BE OVERWRITTEN MAY ALREADY BE SYNCHRONIZED WITH LIBREVIEW.</string>
+    <string name="developing_options_warning">Orange buttons dangerous.
+        Use internet-offline mode with subsequent database deletion.
+        Data that will be overwritten may already be synced with libreview.</string>
     <string name="exit">Exit</string>
+    <string name="create_librelink_db">Create LibreLink db</string>
 </resources>

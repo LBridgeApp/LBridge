@@ -8,7 +8,7 @@ import java.util.zip.CRC32;
 public class UserTable implements CrcTable {
     private final LibreLinkDatabase db;
 
-    public UserTable(LibreLinkDatabase db) throws Exception {
+    public UserTable(LibreLinkDatabase db) {
         this.db = db;
     }
 

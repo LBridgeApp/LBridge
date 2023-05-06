@@ -15,7 +15,7 @@ public class RealTimeReadingTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
     private final LibreMessage libreMessage;
 
-    public RealTimeReadingTable(LibreLinkDatabase db) throws Exception {
+    public RealTimeReadingTable(LibreLinkDatabase db) {
         this.db = db;
         this.libreMessage = db.getLibreMessage();
     }

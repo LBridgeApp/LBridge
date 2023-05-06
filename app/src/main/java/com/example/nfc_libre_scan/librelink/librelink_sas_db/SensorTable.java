@@ -30,7 +30,7 @@ public class SensorTable implements CrcTable, TimeTable {
     }
 
     private boolean isLastSensorExpired(){
-        // нужно учитывать, что уникальный идентификатор сенсора может быть фейковым.
+        // нужно учитывать, что уникальный идентификатор сенсора, записанный в таблицу, может быть фейковым.
         String lastSensorSerialNumber = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
         return isSensorExpired(lastSensorSerialNumber);
     }
@@ -81,7 +81,7 @@ public class SensorTable implements CrcTable, TimeTable {
     }
 
     private Object getRelatedValueForLastSensorId(String fieldName) {
-        final int lastStoredSensorId = getLastStoredSensorId();
+        final Integer lastStoredSensorId = getLastStoredSensorId();
         return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
     }
 
@@ -222,8 +222,9 @@ public class SensorTable implements CrcTable, TimeTable {
 
     public void updateToLastScan() throws Exception {
         SqlUtils.validateTime(this, libreMessage);
+
         boolean isSensorExists = isSensorExists(libreMessage.getLibreSN());
-        boolean isLastSensorExpired = isLastSensorExpired();
+        boolean isLastSensorExpired = !isTableNull() && isLastSensorExpired();
 
         if(!isSensorExists){
             String originalLibreSN = libreMessage.getLibreSN();

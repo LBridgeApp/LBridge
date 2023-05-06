@@ -17,7 +17,7 @@ public class HistoricReadingTable implements CrcTable, TimeTable {
     private final LibreLinkDatabase db;
     private final LibreMessage libreMessage;
 
-    public HistoricReadingTable(LibreLinkDatabase db) throws Exception {
+    public HistoricReadingTable(LibreLinkDatabase db) {
         this.db = db;
         this.libreMessage = db.getLibreMessage();
     }

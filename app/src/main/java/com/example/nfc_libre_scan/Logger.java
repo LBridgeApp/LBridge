@@ -105,13 +105,18 @@ public class Logger {
 
     private void writeToDatabase(LocalDateTime utc, String status, String message) {
         try {
+            db.beginTransaction();
             ContentValues values = new ContentValues();
             values.put(TableStrings.dateTimeUTC, utc.format(dbTimeFormatter));
             values.put(TableStrings.status, status);
             values.put(TableStrings.message, message);
             db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        } catch (SQLiteException e) {
+            db.setTransactionSuccessful();
+        } catch (Exception e) {
             e.printStackTrace();
+        }
+        finally {
+            db.endTransaction();
         }
     }
 

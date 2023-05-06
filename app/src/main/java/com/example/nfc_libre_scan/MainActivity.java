@@ -48,7 +48,6 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         bgHistoryView = this.findViewById(R.id.bgHistoryView);
 
         Button sugarAddingBtn = this.findViewById(R.id.sugarAddingBtn);
-        Button databaseRemovingBtn = this.findViewById(R.id.removeLibrelinkDB);
         Button clearLogWindowBtn = this.findViewById(R.id.clearLogWindowBtn);
 
         clearLogWindowBtn.setOnClickListener(this);
@@ -69,7 +68,6 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
             libreLink = new LibreLink(this);
             libreLink.listenLibreMessages(libreNFC);
             sugarAddingBtn.setOnClickListener(this);
-            databaseRemovingBtn.setOnClickListener(this);
         } catch (Exception e) {
             Logger.error(e);
         }
@@ -151,12 +149,6 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
         } else if (v.getId() == R.id.sugarAddingBtn) {
             try {
                 libreLink.addLastScanToDatabase();
-            } catch (Exception e) {
-                Logger.error(e);
-            }
-        } else if (v.getId() == R.id.removeLibrelinkDB) {
-            try {
-                libreLink.removeLibreLinkDatabases();
             } catch (Exception e) {
                 Logger.error(e);
             }

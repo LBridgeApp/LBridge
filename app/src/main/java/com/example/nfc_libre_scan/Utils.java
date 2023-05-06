@@ -16,6 +16,7 @@ public class Utils {
     }
 
     public static long withoutNanos(long timestamp){
+        // TODO: проверить этот метод
         // некоторые поля оканчиваются на 000, поэтому наносекунды убираются.
         Instant instant = Instant.ofEpochMilli(timestamp);
         Instant instantWithoutNanos = instant.truncatedTo(ChronoUnit.SECONDS);

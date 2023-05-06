@@ -21,7 +21,8 @@ public class Payload {
     }
 
     public static long getSensorStartTimestampUTC(long scanUnixTimestamp, byte[] payload){
-        // TODO: проверить это, сравнив значение этого метода и то, что записано официально в базе.
+        // TODO: не совпадают значения, если сравнить значения sensorStartTimestampUTC
+        // в оригинальной таблице и значение, которое выдает этот метод.
         int sensorTimeInMinutes = Payload.getSensorTimeInMinutes(payload);
         Instant scanTimestampAsInstant = Instant.ofEpochMilli(scanUnixTimestamp);
         LocalDateTime scanTimeStampAsDateTime = LocalDateTime.ofInstant(scanTimestampAsInstant, ZoneOffset.UTC);
