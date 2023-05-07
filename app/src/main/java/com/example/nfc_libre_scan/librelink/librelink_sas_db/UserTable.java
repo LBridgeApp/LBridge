@@ -1,79 +1,47 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.UserRow;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.CRC32;
 
-public class UserTable implements CrcTable {
+public class UserTable implements Table {
     private final LibreLinkDatabase db;
 
     public UserTable(LibreLinkDatabase db) {
         this.db = db;
     }
 
-    @Override
-    public void onTableClassInit() throws Exception {
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
+    public int getLastStoredUserId(){
+        UserRow[] rows = this.queryRows();
+        return rows[rows.length - 1].getUserId();
     }
 
-    @Override
-    public void fillByLastRecord() {
-        this.name = (String) this.getRelatedValueForLastUserId(TableStrings.name);
-        this.userId = ((Long) this.getRelatedValueForLastUserId(TableStrings.userId)).intValue();
-        this.CRC = (long) this.getRelatedValueForLastUserId(TableStrings.CRC);
-    }
 
     @Override
-    public String getTableName() {
-        return TableStrings.TABLE_NAME;
+    public String getName() {
+        return "users";
     }
 
     @Override
-    public long computeCRC32() throws IOException {
-        CRC32 crc32 = new CRC32();
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    public UserRow[] queryRows() {
+        List<UserRow> rowList = new ArrayList<>();
 
-        dataOutputStream.writeUTF(this.name);
+        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        for(int rowIndex = 0; rowIndex < rowLength; rowIndex++){
+            rowList.add(new UserRow(this, rowIndex));
+        }
 
-        dataOutputStream.flush();
-        crc32.update(byteArrayOutputStream.toByteArray());
-        return crc32.getValue();
+        return rowList.toArray(new UserRow[0]);
     }
 
     @Override
-    public long getOriginalCRC() {
-        return this.CRC;
-    }
-
-    @Override
-    public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
-    }
-
-    @Override
-    public void onTableChanged() throws Exception {
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
-    }
-
-    protected Integer getLastStoredUserId() {
-        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.userId, TableStrings.TABLE_NAME);
-    }
-
-    private Object getRelatedValueForLastUserId(String fieldName) {
-        final Integer lastStoredUserId = getLastStoredUserId();
-        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.userId, lastStoredUserId);
-    }
-
-    private String name;
-    private int userId;
-    private long CRC;
-
-    private static class TableStrings {
-        final static String TABLE_NAME = "users";
-        final static String name = "name";
-        final static String userId = "userId";
-        final static String CRC = "CRC";
+    public LibreLinkDatabase getDatabase() {
+        return db;
     }
 }

@@ -19,12 +19,13 @@
     <string name="set_draw_overlay_permission">Set Draw Overlay Permission</string>
     <string name="start_web_service">Start web service</string>
     <string name="stop_web_service">Stop web service</string>
-    <string name="set_fake_serial_number_for_last_sensor">SET FAKE SERIAL NUMBER FOR LAST SENSOR</string>
+    <string name="set_fake_serial_number_for_last_sensor_in_db">Set fake serial number for last sensor in db</string>
     <string name="for_developers">For Developers</string>
-    <string name="end_current_sensor">End current sensor</string>
+    <string name="end_last_sensor_in_db">End last sensor in db</string>
     <string name="developing_options_warning">Orange buttons dangerous.
         Use internet-offline mode with subsequent database deletion.
         Data that will be overwritten may already be synced with libreview.</string>
     <string name="exit">Exit</string>
     <string name="create_librelink_db">Create LibreLink db</string>
+    <string name="remove_sensor_aliases">Remove sensor aliases</string>
 </resources>

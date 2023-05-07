@@ -77,7 +77,7 @@ public class LibreLink implements LibreMessageListener {
             this.createDatabasesInLibreLinkApp();
         }
         this.copySasDatabaseToUs();
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this, libreMessage);
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this);
         libreLinkDatabase.patchWithLastScan();
         Logger.ok("database edited.");
         libreMessage.onAddedToDatabase();
@@ -136,7 +136,7 @@ public class LibreLink implements LibreMessageListener {
     public void createDatabasesInLibreLinkApp() throws Exception {
         killApp();
         this.removeDatabasesInOurApp();
-        LibreLinkDatabase db = new LibreLinkDatabase(context, this, null);
+        LibreLinkDatabase db = new LibreLinkDatabase(context, this);
         db.createDatabasesInOurApp();
         this.copySasDatabaseFromUs();
         this.copyApolloDatabaseFromUs();
@@ -172,20 +172,22 @@ public class LibreLink implements LibreMessageListener {
         this.libreMessage = libreMessage;
     }
 
+    public LibreMessage getLibreMessage(){ return libreMessage; }
+
     public void setFakeSerialNumberForLastSensor() throws Exception {
         this.killApp();
         this.copySasDatabaseToUs();
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this, libreMessage);
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this);
         libreLinkDatabase.setFakeSerialNumberForLastSensor();
         Logger.ok("Fake serial number has been assigned to the last sensor");
         this.copySasDatabaseFromUs();
     }
 
-    public void endCurrentSensor() throws Exception {
+    public void endLastSensor() throws Exception {
         this.killApp();
         this.copySasDatabaseToUs();
-        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this, libreMessage);
-        libreLinkDatabase.endCurrentSensor();
+        LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this);
+        libreLinkDatabase.endLastSensor();
         Logger.ok("Current sensor has ended in librelink db.");
         this.copySasDatabaseFromUs();
     }

@@ -1,16 +1,15 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
-import android.content.ContentValues;
 import android.database.sqlite.SQLiteStatement;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.zip.CRC32;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class SensorSelectionRangeTable implements CrcTable, TimeTable {
+public class SensorSelectionRangeTable implements Table {
 
     private final LibreLinkDatabase db;
     private final LibreMessage libreMessage;
@@ -19,142 +18,70 @@ public class SensorSelectionRangeTable implements CrcTable, TimeTable {
         this.db = db;
         this.libreMessage = db.getLibreMessage();
     }
-    @Override
-    public void onTableClassInit() throws Exception {
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
-    }
 
-    @Override
-    public void fillByLastRecord() {
-        this.endTimestampUTC = (long) this.getRelatedValueForLastRangeId(TableStrings.endTimestampUTC);
-        this.rangeId = ((Long)this.getRelatedValueForLastRangeId(TableStrings.rangeId)).intValue();
-        this.sensorId = ((Long) this.getRelatedValueForLastRangeId(TableStrings.sensorId)).intValue();
-        this.startTimestampUTC = (long) this.getRelatedValueForLastRangeId(TableStrings.startTimestampUTC);
-        this.CRC = (long) this.getRelatedValueForLastRangeId(TableStrings.CRC);
-    }
+    protected void endSensor(String libreSN) throws Exception {
 
-    @Override
-    public String getTableName() {
-        return TableStrings.TABLE_NAME;
-    }
+        SensorSelectionRangeRow[] rows = this.queryRows();
+        SensorTable sensorTable = db.getSensorTable();
+        int lastSensorId = sensorTable.getLastStoredSensorId();
 
-    @Override
-    public long computeCRC32() throws IOException {
-        CRC32 crc32 = new CRC32();
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+        SensorSelectionRangeRow sensorRow = Arrays.stream(rows).filter(t -> t.getSensorId() == lastSensorId)
+                .findFirst().orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
 
-        dataOutputStream.writeInt(this.sensorId);
-        dataOutputStream.writeLong(this.startTimestampUTC);
-        dataOutputStream.writeLong(this.endTimestampUTC);
-
-        dataOutputStream.flush();
-        crc32.update(byteArrayOutputStream.toByteArray());
-        return crc32.getValue();
-    }
-
-    @Override
-    public long getOriginalCRC() {
-        return this.CRC;
-    }
-
-    @Override
-    public long getLastUTCTimestamp() {
-        return (long) this.getRelatedValueForLastRangeId(TableStrings.startTimestampUTC);
-    }
-
-    @Override
-    public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
-    }
-
-    @Override
-    public void onTableChanged() throws Exception {
-        this.fillByLastRecord();
-
-        if(this.sensorId != this.rangeId){
-            throw new Exception("RangeId is not equals sensorId");
-        }
-
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
-    }
-
-    private Object getRelatedValueForLastRangeId(String fieldName) {
-        final Integer lastStoredRangeId = this.getLastStoredRangeId();
-        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.rangeId, lastStoredRangeId);
-    }
-
-    protected void endCurrentSensor() throws Exception {
-        this.endTimestampUTC = System.currentTimeMillis();
-        this.CRC = computeCRC32();
-        this.rangeId = getLastStoredRangeId();
-
-        String sql = String.format("UPDATE %s SET %s=?, %s=? WHERE %s=?", TableStrings.TABLE_NAME,
-                TableStrings.endTimestampUTC,
-                TableStrings.CRC,
-                TableStrings.rangeId);
-
-        try (SQLiteStatement statement = db.getSQLite().compileStatement(sql)) {
-            statement.bindLong(1, endTimestampUTC);
-            statement.bindLong(2, CRC);
-            statement.bindLong(3, rangeId);
-            statement.execute();
-        }
-
-        this.onTableChanged();
+        sensorRow.setEndTimestampUTC(System.currentTimeMillis()).replace();
     }
 
     public void patchWithNewSensor() throws Exception {
         // а вот когда мы стартуем новый сенсор,
         // вот тогда надо закончить сенсор здесь.
         // см. private void onSensorEnded() класса SensorTable.
-        if(!isTableNull()) {
-            this.endCurrentSensor();
+        SensorSelectionRangeRow[] rows = this.queryRows();
+        if (rows.length == 0) {
+            String lastSensorSerialNumber = db.getSensorTable().getLastSensorSerialNumber();
+            this.endSensor(lastSensorSerialNumber);
         }
         this.createNewSensorRecord();
     }
 
-    private Integer getLastStoredRangeId() {
-        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.rangeId, TableStrings.TABLE_NAME);
-    }
-
     private void createNewSensorRecord() throws Exception {
-        SqlUtils.validateTime(this, libreMessage);
 
         // В таблице LibreLink для действующего сенсора
         // значение конца времени действия равно
         // 9223372036854775807
-        this.endTimestampUTC = Long.MAX_VALUE;
+        long endTimestampUTC = Long.MAX_VALUE;
         // значение rangeId равно значению sensorId
         // rangeId писать НУЖНО, так как автоматически он НЕ увеличивается.
-        this.rangeId = (this.getLastStoredRangeId() == null) ? 1 : this.getLastStoredRangeId() + 1;
-        this.sensorId = db.getSensorTable().getLastStoredSensorId();
-        this.startTimestampUTC = libreMessage.getSensorStartTimestampUTC();
-        this.CRC = computeCRC32();
 
-        ContentValues values = new ContentValues();
-        values.put(TableStrings.endTimestampUTC, endTimestampUTC);
-        values.put(TableStrings.rangeId, rangeId);
-        values.put(TableStrings.sensorId, sensorId);
-        values.put(TableStrings.startTimestampUTC, startTimestampUTC);
-        values.put(TableStrings.CRC, CRC);
+        SensorSelectionRangeRow[] rows = this.queryRows();
+        int rangeId = rows[rows.length - 1].getRangeId() + 1;
 
-        db.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
-        this.onTableChanged();
+        int sensorId = db.getSensorTable().getLastStoredSensorId();
+        long startTimestampUTC = libreMessage.getSensorStartTimestampUTC();
+
+        SensorSelectionRangeRow row = new SensorSelectionRangeRow(this,
+                endTimestampUTC, rangeId, sensorId, startTimestampUTC);
+        row.insertOrThrow();
     }
 
-    private long endTimestampUTC;
-    private int rangeId;
-    private int sensorId;
-    private long startTimestampUTC;
-    private long CRC;
+    @Override
+    public String getName() {
+        return "sensorSelectionRanges";
+    }
 
-    private static class TableStrings {
-        final static String TABLE_NAME = "sensorSelectionRanges";
-        final static String endTimestampUTC = "endTimestampUTC";
-        final static String rangeId = "rangeId";
-        final static String sensorId = "sensorId";
-        final static String startTimestampUTC = "startTimestampUTC";
-        final static String CRC = "CRC";
+    @Override
+    public SensorSelectionRangeRow[] queryRows() {
+        List<SensorSelectionRangeRow> rowList = new ArrayList<>();
+
+        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
+            rowList.add(new SensorSelectionRangeRow(this, rowIndex));
+        }
+
+        return rowList.toArray(new SensorSelectionRangeRow[0]);
+    }
+
+    @Override
+    public LibreLinkDatabase getDatabase() {
+        return db;
     }
 }

@@ -25,15 +25,17 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
 
         Button removeLibreLinkDb = this.findViewById(R.id.removeLibrelinkDB);
         Button fakeSerialNumberBtn = findViewById(R.id.fake_serial_button);
-        Button endCurrentSensorBtn = findViewById(R.id.end_current_sensor_btn);
+        Button endCurrentSensorBtn = findViewById(R.id.end_last_sensor_btn);
         Button clearLogBtn = findViewById(R.id.clearLogWindowBtn);
         Button createLibreLinkDb = findViewById(R.id.createLibreLinkDB);
+        Button removeSensorAliases = findViewById(R.id.remove_sensor_aliases);
 
         clearLogBtn.setOnClickListener(this);
         fakeSerialNumberBtn.setOnClickListener(this);
         endCurrentSensorBtn.setOnClickListener(this);
         removeLibreLinkDb.setOnClickListener(this);
         createLibreLinkDb.setOnClickListener(this);
+        removeSensorAliases.setOnClickListener(this);
     }
     @Override
     public void logReceived(Logger.LogRecord log) {
@@ -59,7 +61,7 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
                 Logger.error(e);
             }
         }
-        else if(v.getId() == R.id.end_current_sensor_btn){
+        else if(v.getId() == R.id.end_last_sensor_btn){
             try {
                 endCurrentSensor();
             } catch (Exception e) {
@@ -82,16 +84,29 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
                 Logger.error(e);
             }
         }
+        else if(v.getId() == R.id.remove_sensor_aliases){
+            try {
+                this.removeSensorAliases();
+            } catch (Exception e) {
+                Logger.error(e);
+            }
+        }
     }
 
-    public void setFakeSerialNumberForLastSensor() throws Exception {
+    private void setFakeSerialNumberForLastSensor() throws Exception {
         LibreLink libreLink = new LibreLink(this);
         libreLink.setFakeSerialNumberForLastSensor();
     }
 
-    public void endCurrentSensor() throws Exception {
+    private void endCurrentSensor() throws Exception {
         LibreLink libreLink = new LibreLink(this);
-        libreLink.endCurrentSensor();
+        libreLink.endLastSensor();
+    }
+
+    private void removeSensorAliases() throws Exception {
+        RootLib rootLib = new RootLib(this);
+        rootLib.removeFile(this.getDatabasePath("sensorAliases.db").getAbsolutePath());
+        Logger.ok("Sensor aliases removed.");
     }
 
     @Override

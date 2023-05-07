@@ -26,23 +26,33 @@
             android:layout_centerHorizontal="true"
             android:textColor="#FF6600"
             android:layout_marginBottom="32dp"
-            android:text="@string/set_fake_serial_number_for_last_sensor" />
+            android:text="@string/set_fake_serial_number_for_last_sensor_in_db" />
 
         <Button
-            android:id="@+id/end_current_sensor_btn"
+            android:id="@+id/end_last_sensor_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/fake_serial_button"
             android:layout_centerHorizontal="true"
             android:layout_marginBottom="32dp"
             android:textColor="#FF6600"
-            android:text="@string/end_current_sensor" />
+            android:text="@string/end_last_sensor_in_db" />
+
+        <Button
+            android:id="@+id/remove_sensor_aliases"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/end_last_sensor_btn"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="32dp"
+            android:textColor="#FF6600"
+            android:text="@string/remove_sensor_aliases" />
 
         <Button
             android:id="@+id/createLibreLinkDB"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/end_current_sensor_btn"
+            android:layout_below="@id/remove_sensor_aliases"
             android:layout_centerHorizontal="true"
             android:layout_marginBottom="32dp"
             android:text="@string/create_librelink_db" />

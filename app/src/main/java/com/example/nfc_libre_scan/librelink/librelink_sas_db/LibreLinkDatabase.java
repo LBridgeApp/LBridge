@@ -12,7 +12,6 @@ public class LibreLinkDatabase {
     private static final String APOLLO_DB = "apollo.db";
     private static final String SAS_DB = "sas.db";
     private SQLiteDatabase db;
-    private final LibreMessage libreMessage;
     private HistoricReadingTable historicReadingTable;
     private RawScanTable rawScanTable;
     private RealTimeReadingTable realTimeReadingTable;
@@ -22,27 +21,26 @@ public class LibreLinkDatabase {
     private final Context context;
     private final LibreLink librelink;
 
-    public LibreLinkDatabase(Context context, LibreLink librelink, LibreMessage libreMessage) {
+    public LibreLinkDatabase(Context context, LibreLink librelink) {
         this.context = context;
-        this.libreMessage = libreMessage;
         this.librelink = librelink;
     }
 
     public void patchWithLastScan() throws Exception {
         performAction(() -> {
-            sensorTable.updateToLastScan();
-            rawScanTable.addLastSensorScan();
-            realTimeReadingTable.addLastSensorScan();
-            historicReadingTable.addLastSensorScan();
+            sensorTable.updateToLastScan(librelink.getLibreMessage());
+            rawScanTable.addLastSensorScan(librelink.getLibreMessage());
+            realTimeReadingTable.addLastSensorScan(librelink.getLibreMessage());
+            historicReadingTable.addLastSensorScan(librelink.getLibreMessage());
         });
     }
 
     public void setFakeSerialNumberForLastSensor() throws Exception {
-        performAction(this.sensorTable::setFakeSerialNumberForLastSensor);
+        performAction(() -> sensorTable.setFakeSerialNumberForLastSensor());
     }
 
-    public void endCurrentSensor() throws Exception {
-        performAction(this.sensorTable::endCurrentSensor);
+    public void endLastSensor() throws Exception {
+        performAction(() -> sensorTable.endLastSensor());
     }
 
     private void open() throws Exception {
@@ -54,13 +52,6 @@ public class LibreLinkDatabase {
         sensorSelectionRangeTable = new SensorSelectionRangeTable(this);
         sensorTable = new SensorTable(this);
         userTable = new UserTable(this);
-
-        historicReadingTable.onTableClassInit();
-        rawScanTable.onTableClassInit();
-        realTimeReadingTable.onTableClassInit();
-        sensorSelectionRangeTable.onTableClassInit();
-        sensorTable.onTableClassInit();
-        userTable.onTableClassInit();
     }
     private void performAction(ThrowingRunnable action) throws Exception {
         try {
@@ -79,12 +70,12 @@ public class LibreLinkDatabase {
         }
     }
 
-    protected SQLiteDatabase getSQLite(){
+    public SQLiteDatabase getSQLite(){
         return db;
     }
 
     protected LibreMessage getLibreMessage(){
-        return libreMessage;
+        return librelink.getLibreMessage();
     }
 
     protected HistoricReadingTable getHistoricReadingTable(){

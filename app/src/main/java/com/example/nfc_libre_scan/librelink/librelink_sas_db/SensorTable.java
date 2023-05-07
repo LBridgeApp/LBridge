@@ -1,413 +1,277 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
-import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.DatabaseUtils;
+import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 
+import com.example.nfc_libre_scan.App;
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.libre.PatchUID;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.zip.CRC32;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class SensorTable implements CrcTable, TimeTable {
+public class SensorTable implements Table {
 
     private final LibreLinkDatabase db;
-    private final LibreMessage libreMessage;
+    private SQLiteDatabase sensorAliasesDb;
 
-    public SensorTable(LibreLinkDatabase db) throws Exception {
+    public SensorTable(LibreLinkDatabase db) {
         this.db = db;
-        this.libreMessage = db.getLibreMessage();
-    }
-
-    private boolean isLastSensorExpired(){
-        // нужно учитывать, что уникальный идентификатор сенсора, записанный в таблицу, может быть фейковым.
-        String lastSensorSerialNumber = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
-        return isSensorExpired(lastSensorSerialNumber);
+        this.createSensorAliasTable();
     }
 
     private boolean isSensorExpired(String libreSN) {
-        String sql = String.format("SELECT * FROM %s WHERE %s=%s", TableStrings.TABLE_NAME,
-                TableStrings.serialNumber, DatabaseUtils.sqlEscapeString(libreSN));
 
-        Cursor cursor = db.getSQLite().rawQuery(sql, null);
-
-        boolean sensorIsExpired;
-        if(cursor.moveToFirst()){
-            int sensorStartTimestampIndex = cursor.getColumnIndex(TableStrings.sensorStartTimestampUTC);
-            int endedEarlyIndex = cursor.getColumnIndex(TableStrings.endedEarly);
-
-            long sensorStartTimestampUTC = cursor.getLong(sensorStartTimestampIndex);
-            boolean endedEarly = cursor.getInt(endedEarlyIndex) != 0;
-
-            Instant startInstant = Instant.ofEpochMilli(sensorStartTimestampUTC);
-            Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
-            long sensorExpirationTimestamp = endInstant.toEpochMilli();
-
-            long currentTimestamp = System.currentTimeMillis();
-
-            sensorIsExpired = currentTimestamp >= sensorExpirationTimestamp || endedEarly;
-        }
-        else{ sensorIsExpired = false; }
-        cursor.close();
-        return sensorIsExpired;
-    }
-
-    private boolean isSensorExists(String libreSN){
-        String sql = String.format("SELECT COUNT(*) FROM %s WHERE %s=%s", TableStrings.TABLE_NAME,
-                TableStrings.serialNumber, DatabaseUtils.sqlEscapeString(libreSN));
-
-        Cursor cursor = db.getSQLite().rawQuery(sql, null);
-
-        int count = 0;
-        if(cursor.moveToFirst()){
-            count = cursor.getInt(0);
-        }
-        cursor.close();
-        return count != 0;
-    }
-
-    protected Integer getLastStoredSensorId() {
-        return SqlUtils.getLastStoredFieldValue(db.getSQLite(), TableStrings.sensorId, TableStrings.TABLE_NAME);
-    }
-
-    private Object getRelatedValueForLastSensorId(String fieldName) {
-        final Integer lastStoredSensorId = getLastStoredSensorId();
-        return SqlUtils.getRelatedValue(db.getSQLite(), fieldName, TableStrings.TABLE_NAME, TableStrings.sensorId, lastStoredSensorId);
-    }
-
-    private void createNewSensorRecord(boolean sensorIsExtended) throws Exception {
-        if (sensorIsExtended) {
-            // если оригинальный серийный номер уже присутствует в базе, а сенсор продленный.
-            this.uniqueIdentifier = PatchUID.generateFake();
-            this.serialNumber = PatchUID.decodeSerialNumber(this.uniqueIdentifier);
-        } else {
-            // если сенсор новый или всё-таки продленный, но отсутствует в базе.
-            this.uniqueIdentifier = libreMessage.getRawLibreData().getPatchUID();
-            this.serialNumber = libreMessage.getLibreSN();
+        SensorRow[] rows = this.queryRows();
+        SensorRow sensorRow = Arrays.stream(rows)
+                .filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst().orElse(null);
+        if (sensorRow == null) {
+            return false;
         }
 
-        this.attenuationState = libreMessage.getLibreSavedState().getAttenuationState();
-        this.bleAddress = null;
-        this.compositeState = libreMessage.getLibreSavedState().getCompositeState();
-        this.enableStreamingTimestamp = 0;
-        this.endedEarly = false;
-        this.initialPatchInformation = libreMessage.getRawLibreData().getPatchInfo();
-        this.lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
-        this.lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
-        this.lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
-        this.lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
-        this.lsaDetected = false;
-        this.measurementState = null;
-        this.personalizationIndex = 0;
-        // не нужно писать sensorId, так как это значение само увеличивается при добавлении записи.
-        this.sensorStartTimeZone = libreMessage.getCurrentBg().getTimeZone();
-        this.sensorStartTimestampLocal = Utils.withoutNanos(libreMessage.getSensorStartTimestampLocal());
-        this.sensorStartTimestampUTC = Utils.withoutNanos(libreMessage.getSensorStartTimestampUTC());
-        this.streamingAuthenticationData = null;
-        this.streamingUnlockCount = 0;
-        this.unrecordedHistoricTimeChange = 0;
-        this.unrecordedRealTimeTimeChange = 0;
-        this.userId = db.getUserTable().getLastStoredUserId();
-        this.warmupPeriodInMinutes = 60;
-        this.wearDurationInMinutes = 20160;
-        this.CRC = this.computeCRC32();
+        long sensorStartTimestampUTC = sensorRow.getSensorStartTimestampUTC();
+        boolean endedEarly = sensorRow.getEndedEarly();
 
-        ContentValues values = new ContentValues();
-        values.put(TableStrings.attenuationState, attenuationState);
-        values.put(TableStrings.bleAddress, bleAddress);
-        values.put(TableStrings.compositeState, compositeState);
-        values.put(TableStrings.enableStreamingTimestamp, enableStreamingTimestamp);
-        values.put(TableStrings.endedEarly, endedEarly);
-        values.put(TableStrings.initialPatchInformation, initialPatchInformation);
-        values.put(TableStrings.lastScanSampleNumber, lastScanSampleNumber);
-        values.put(TableStrings.lastScanTimeZone, lastScanTimeZone);
-        values.put(TableStrings.lastScanTimestampLocal, lastScanTimestampLocal);
-        values.put(TableStrings.lastScanTimestampUTC, lastScanTimestampUTC);
-        values.put(TableStrings.lsaDetected, lsaDetected);
-        values.put(TableStrings.measurementState, measurementState);
-        values.put(TableStrings.personalizationIndex, personalizationIndex);
-        // не нужно писать sensorId, так как это значение само увеличивается при добавлении записи.
-        values.put(TableStrings.sensorStartTimeZone, sensorStartTimeZone);
-        values.put(TableStrings.sensorStartTimestampLocal, sensorStartTimestampLocal);
-        values.put(TableStrings.sensorStartTimestampUTC, sensorStartTimestampUTC);
-        values.put(TableStrings.serialNumber, serialNumber);
-        values.put(TableStrings.streamingAuthenticationData, streamingAuthenticationData);
-        values.put(TableStrings.streamingUnlockCount, streamingUnlockCount);
-        values.put(TableStrings.uniqueIdentifier, uniqueIdentifier);
-        values.put(TableStrings.unrecordedHistoricTimeChange, unrecordedHistoricTimeChange);
-        values.put(TableStrings.unrecordedRealTimeTimeChange, unrecordedRealTimeTimeChange);
-        values.put(TableStrings.userId, userId);
-        values.put(TableStrings.warmupPeriodInMinutes, warmupPeriodInMinutes);
-        values.put(TableStrings.wearDurationInMinutes, wearDurationInMinutes);
-        values.put(TableStrings.CRC, CRC);
+        Instant startInstant = Instant.ofEpochMilli(sensorStartTimestampUTC);
+        Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
+        long sensorExpirationTimestamp = endInstant.toEpochMilli();
 
-        db.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+        long currentTimestamp = System.currentTimeMillis();
+
+        return currentTimestamp >= sensorExpirationTimestamp || endedEarly;
+    }
+
+    private boolean isSensorExists(String libreSN) {
+        SensorRow[] rows = this.queryRows();
+
+        SensorRow sensorRow = Arrays.stream(rows)
+                .filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst().orElse(null);
+        return sensorRow != null;
+    }
+
+    private void createNewSensorRecord(LibreMessage libreMessage, String serialNumber, byte[] uniqueIdentifier) throws Exception {
+
+        byte[] attenuationState = libreMessage.getLibreSavedState().getAttenuationState();
+        byte[] bleAddress = null;
+        byte[] compositeState = libreMessage.getLibreSavedState().getCompositeState();
+        int enableStreamingTimestamp = 0;
+        boolean endedEarly = false;
+        byte[] initialPatchInformation = libreMessage.getRawLibreData().getPatchInfo();
+        int lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
+        String lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
+        long lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
+        long lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
+        boolean lsaDetected = false;
+        // TODO: не знаю как считать measurementState
+        byte[] measurementState = null;
+        int personalizationIndex = 0;
+        String sensorStartTimeZone = libreMessage.getCurrentBg().getTimeZone();
+        long sensorStartTimestampLocal = Utils.withoutNanos(libreMessage.getSensorStartTimestampLocal());
+        long sensorStartTimestampUTC = Utils.withoutNanos(libreMessage.getSensorStartTimestampUTC());
+        byte[] streamingAuthenticationData = null;
+        int streamingUnlockCount = 0;
+        int unrecordedHistoricTimeChange = 0;
+        int unrecordedRealTimeTimeChange = 0;
+        int userId = db.getUserTable().getLastStoredUserId();
+        int warmupPeriodInMinutes = 60;
+        int wearDurationInMinutes = 20160;
+
+        SensorRow row = new SensorRow(this, attenuationState, bleAddress, compositeState,
+                enableStreamingTimestamp, endedEarly, initialPatchInformation,
+                lastScanSampleNumber, lastScanTimeZone, lastScanTimestampLocal, lastScanTimestampUTC,
+                lsaDetected, measurementState, personalizationIndex, sensorStartTimeZone,
+                sensorStartTimestampLocal, sensorStartTimestampUTC, serialNumber,
+                streamingAuthenticationData, streamingUnlockCount, uniqueIdentifier,
+                unrecordedHistoricTimeChange, unrecordedRealTimeTimeChange,
+                userId, warmupPeriodInMinutes, wearDurationInMinutes);
+        row.insertOrThrow();
         this.onNewSensorRecord();
-        this.onTableChanged();
     }
 
     private void onNewSensorRecord() throws Exception {
         db.getSensorSelectionRangeTable().patchWithNewSensor();
     }
 
-    private void updateLastSensorRecord() throws Exception {
+    private void updateSensorRecord(LibreMessage libreMessage, String libreAlias) throws Exception {
+
+        SensorRow[] sensorRows = this.queryRows();
+        SensorRow row = Arrays.stream(sensorRows)
+                .filter(r -> r.getSerialNumber().equals(libreAlias))
+                .findFirst()
+                .orElse(null);
+
+        if (row == null) {
+            throw new Exception(String.format("Row with alias %s not found.", libreAlias));
+        }
 
         final byte[] messageAttenuationState = libreMessage.getLibreSavedState().getAttenuationState();
         final byte[] messageCompositeState = libreMessage.getLibreSavedState().getCompositeState();
 
-        final byte[] tableAttenuationState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.attenuationState);
-        final byte[] tableCompositeState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.compositeState);
+        final byte[] tableAttenuationState = row.getAttenuationState();
+
+        final byte[] tableCompositeState = row.getCompositeState();
 
         // Если в таблице LibreLink attenuationState и compositeState
         // не равны null, а в libreMessage равны null, то не перезаписывать.
-        this.attenuationState = (messageAttenuationState != null) ? messageAttenuationState : tableAttenuationState;
-        this.compositeState = (messageCompositeState != null) ? messageCompositeState : tableCompositeState;
+        byte[] attenuationState = (messageAttenuationState != null) ? messageAttenuationState : tableAttenuationState;
+        byte[] compositeState = (messageCompositeState != null) ? messageCompositeState : tableCompositeState;
 
-        this.sensorId = getLastStoredSensorId();
-        this.lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
-        this.lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
-        this.lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
-        this.lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
-        this.CRC = this.computeCRC32();
+        int lastScanSampleNumber = libreMessage.getCurrentBg().getSampleNumber();
+        String lastScanTimeZone = libreMessage.getCurrentBg().getTimeZone();
+        long lastScanTimestampLocal = libreMessage.getCurrentBg().getTimestampLocal();
+        long lastScanTimestampUTC = libreMessage.getCurrentBg().getTimestampUTC();
 
-        String sql = String.format("UPDATE %s SET %s=?, %s=?, %s=?, %s=?, %s=?, %s=?, %s=? WHERE %s=?",
-                TableStrings.TABLE_NAME,
-                TableStrings.attenuationState,
-                TableStrings.compositeState,
-                TableStrings.lastScanSampleNumber,
-                TableStrings.lastScanTimeZone,
-                TableStrings.lastScanTimestampLocal,
-                TableStrings.lastScanTimestampUTC,
-                TableStrings.CRC,
-                TableStrings.sensorId
-                );
-
-        try (SQLiteStatement statement = db.getSQLite().compileStatement(sql)) {
-            if(attenuationState != null){
-                statement.bindBlob(1, attenuationState);
-            }
-            else{
-                statement.bindNull(1);
-            }
-
-            if(compositeState != null){
-                statement.bindBlob(2, compositeState);
-            }
-            else {
-                statement.bindNull(2);
-            }
-
-            statement.bindLong(3, lastScanSampleNumber);
-            statement.bindString(4, lastScanTimeZone);
-            statement.bindLong(5, lastScanTimestampLocal);
-            statement.bindLong(6, lastScanTimestampUTC);
-            statement.bindLong(7, CRC);
-            statement.bindLong(8, sensorId);
-
-            statement.execute();
-        }
-
-        this.onTableChanged();
+        row.setAttenuationState(attenuationState)
+                .setCompositeState(compositeState)
+                .setLastScanSampleNumber(lastScanSampleNumber)
+                .setLastScanTimeZone(lastScanTimeZone)
+                .setLastScanTimestampLocal(lastScanTimestampLocal)
+                .setLastScanTimestampUTC(lastScanTimestampUTC)
+                .replace();
     }
 
-    public void updateToLastScan() throws Exception {
-        SqlUtils.validateTime(this, libreMessage);
+    public void updateToLastScan(LibreMessage libreMessage) throws Exception {
 
-        boolean isSensorExists = isSensorExists(libreMessage.getLibreSN());
-        boolean isLastSensorExpired = !isTableNull() && isLastSensorExpired();
+        if (getSensorAlias(libreMessage.getLibreSN()) == null) {
+            this.setSensorAlias(libreMessage.getLibreSN(), libreMessage.getLibreSN());
+        }
 
-        if(!isSensorExists){
+        boolean isSensorAliasExists = isSensorExists(getSensorAlias(libreMessage.getLibreSN()));
+        boolean isSensorAliasExpired = isSensorExpired(getSensorAlias(libreMessage.getLibreSN()));
+
+        if (!isSensorAliasExists) {
             String originalLibreSN = libreMessage.getLibreSN();
+            byte[] originalPatchUID = libreMessage.getRawLibreData().getPatchUID();
+            this.setSensorAlias(originalLibreSN, originalLibreSN);
             Logger.inf(String.format("Sensor with serial number %s does not exists in db. " +
                     "Creating new sensor record...", originalLibreSN));
             // если сенсор новый или всё-таки продленный, но отсутствует в базе.
-            this.createNewSensorRecord(false);
-        }
-        else if(isLastSensorExpired){
-            // если срок действия последнего сенсора истёк
-            String tableLibreSN = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
+            this.createNewSensorRecord(libreMessage, originalLibreSN, originalPatchUID);
+        } else if (isSensorAliasExpired) {
+            // если срок действия сенсора истёк
+            String originalLibreSN = libreMessage.getLibreSN();
+            byte[] fakePatchUID = PatchUID.generateFake();
+            String fakeLibreSN = PatchUID.decodeSerialNumber(fakePatchUID);
+            this.setSensorAlias(originalLibreSN, fakeLibreSN);
             Logger.inf(String.format("Sensor with serial number %s expired in db. " +
-                    "Creating new sensor record with fake ID...", tableLibreSN));
-            this.createNewSensorRecord(true);
-        }
-        else {
-            Logger.inf("Updating last sensor record...");
-            this.updateLastSensorRecord();
+                    "Creating new sensor record with fake ID...", originalLibreSN));
+            this.createNewSensorRecord(libreMessage, fakeLibreSN, fakePatchUID);
+        } else {
+            String originalLibreSN = libreMessage.getLibreSN();
+            String alias = getSensorAlias(libreMessage.getLibreSN());
+            Logger.inf(String.format("Updating sensor record with serial number %s and alias %s ...",
+                    originalLibreSN, alias));
+
+            this.updateSensorRecord(libreMessage, alias);
         }
     }
 
-    @Override
-    public void onTableChanged() throws Exception {
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.WRITING);
-    }
-
-    @Override
-    public void onTableClassInit() throws Exception {
-        SqlUtils.validateCrcAlgorithm(this, SqlUtils.Mode.READING);
-    }
-
-    @Override
-    public void fillByLastRecord() {
-        this.attenuationState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.attenuationState);
-        this.bleAddress = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.bleAddress);
-        this.compositeState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.compositeState);
-        this.enableStreamingTimestamp = ((Long) this.getRelatedValueForLastSensorId(TableStrings.enableStreamingTimestamp)).intValue();
-        this.endedEarly = (long) this.getRelatedValueForLastSensorId(TableStrings.endedEarly) != 0;
-        this.initialPatchInformation = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.initialPatchInformation);
-        this.lastScanSampleNumber = ((Long) this.getRelatedValueForLastSensorId(TableStrings.lastScanSampleNumber)).intValue();
-        this.lastScanTimeZone = (String) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimeZone);
-        this.lastScanTimestampLocal = (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampLocal);
-        this.lastScanTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampUTC);
-        this.lsaDetected = (long) this.getRelatedValueForLastSensorId(TableStrings.lsaDetected) != 0;
-        this.measurementState = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.measurementState);
-        this.personalizationIndex = ((Long) this.getRelatedValueForLastSensorId(TableStrings.personalizationIndex)).intValue();
-        this.sensorId = ((Long) this.getRelatedValueForLastSensorId(TableStrings.sensorId)).intValue();
-        this.sensorStartTimeZone = (String) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimeZone);
-        this.sensorStartTimestampLocal = (long) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimestampLocal);
-        this.sensorStartTimestampUTC = (long) this.getRelatedValueForLastSensorId(TableStrings.sensorStartTimestampUTC);
-        this.serialNumber = (String) this.getRelatedValueForLastSensorId(TableStrings.serialNumber);
-        this.streamingAuthenticationData = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.streamingAuthenticationData);
-        this.streamingUnlockCount = ((Long) this.getRelatedValueForLastSensorId(TableStrings.streamingUnlockCount)).intValue();
-        this.uniqueIdentifier = (byte[]) this.getRelatedValueForLastSensorId(TableStrings.uniqueIdentifier);
-        this.unrecordedHistoricTimeChange = (long) this.getRelatedValueForLastSensorId(TableStrings.unrecordedHistoricTimeChange);
-        this.unrecordedRealTimeTimeChange = (long) this.getRelatedValueForLastSensorId(TableStrings.unrecordedRealTimeTimeChange);
-        this.userId = ((Long) this.getRelatedValueForLastSensorId(TableStrings.userId)).intValue();
-        this.warmupPeriodInMinutes = ((Long) this.getRelatedValueForLastSensorId(TableStrings.warmupPeriodInMinutes)).intValue();
-        this.wearDurationInMinutes = ((Long) this.getRelatedValueForLastSensorId(TableStrings.wearDurationInMinutes)).intValue();
-        this.CRC = (long) this.getRelatedValueForLastSensorId(TableStrings.CRC);
-    }
-
-    @Override
-    public String getTableName() {
-        return TableStrings.TABLE_NAME;
-    }
-
-    @Override
-    public long computeCRC32() throws IOException {
-        CRC32 crc32 = new CRC32();
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-        dataOutputStream.writeInt(this.userId);
-        dataOutputStream.writeUTF(this.serialNumber);
-        dataOutputStream.write(this.uniqueIdentifier);
-        dataOutputStream.writeInt(this.personalizationIndex);
-        dataOutputStream.write(this.initialPatchInformation);
-        dataOutputStream.writeInt(this.enableStreamingTimestamp);
-        dataOutputStream.writeInt(this.streamingUnlockCount);
-        dataOutputStream.writeLong(this.sensorStartTimestampUTC);
-        dataOutputStream.writeLong(this.sensorStartTimestampLocal);
-        dataOutputStream.writeUTF(this.sensorStartTimeZone);
-        dataOutputStream.writeLong(this.lastScanTimestampUTC);
-        dataOutputStream.writeLong(this.lastScanTimestampLocal);
-        dataOutputStream.writeUTF(this.lastScanTimeZone);
-        dataOutputStream.writeInt(this.lastScanSampleNumber);
-        dataOutputStream.writeBoolean(this.endedEarly);
-        byte[] compositeState = this.compositeState;
-        if (compositeState != null) {
-            dataOutputStream.write(compositeState);
-        }
-        byte[] attenuationState = this.attenuationState;
-        if (attenuationState != null) {
-            dataOutputStream.write(attenuationState);
-        }
-        byte[] measurementState = this.measurementState;
-        if (measurementState != null) {
-            dataOutputStream.write(measurementState);
-        }
-        dataOutputStream.writeBoolean(this.lsaDetected);
-        dataOutputStream.writeLong(this.unrecordedHistoricTimeChange);
-        dataOutputStream.writeLong(this.unrecordedRealTimeTimeChange);
-        dataOutputStream.writeInt(this.warmupPeriodInMinutes);
-        dataOutputStream.writeInt(this.wearDurationInMinutes);
-        byte[] streamingAuthenticationData = this.streamingAuthenticationData;
-        if (streamingAuthenticationData != null) {
-            dataOutputStream.write(streamingAuthenticationData);
-        }
-        byte[] bleAddress = this.bleAddress;
-        if (bleAddress != null) {
-            dataOutputStream.write(bleAddress);
+    private String getSensorAlias(String originalLibreSN) {
+        String sql = "SELECT aliasSN FROM sensorAliases WHERE originalLibreSN = ?";
+        Cursor cursor = this.sensorAliasesDb.rawQuery(sql, new String[]{originalLibreSN});
+        String aliasSN = null;
+        if (cursor.moveToFirst()) {
+            aliasSN = cursor.getString(0);
         }
 
-        dataOutputStream.flush();
-        crc32.update(byteArrayOutputStream.toByteArray());
-        return crc32.getValue();
+        cursor.close();
+        return aliasSN;
     }
 
-    @Override
-    public long getOriginalCRC() {
-        return this.CRC;
+    private void createSensorAliasTable() {
+        this.sensorAliasesDb = SQLiteDatabase.openOrCreateDatabase(App.getInstance().getApplicationContext()
+                .getDatabasePath("sensorAliases.db"), null);
+        try {
+            sensorAliasesDb.beginTransaction();
+            sensorAliasesDb.execSQL("CREATE TABLE IF NOT EXISTS sensorAliases (originalLibreSN TEXT NOT NULL, aliasSN TEXT NOT NULL, UNIQUE (`originalLibreSN`));");
+            sensorAliasesDb.setTransactionSuccessful();
+        } finally {
+            this.sensorAliasesDb.endTransaction();
+        }
     }
 
-    @Override
-    public long getLastUTCTimestamp() {
-        return (long) this.getRelatedValueForLastSensorId(TableStrings.lastScanTimestampUTC);
+    private void setSensorAlias(String originalLibreSN, String sensorAlias) {
+        try {
+            this.sensorAliasesDb.beginTransaction();
+            String query = "SELECT COUNT(*) FROM sensorAliases WHERE originalLibreSN = ?";
+            SQLiteStatement statement = sensorAliasesDb.compileStatement(query);
+            statement.bindString(1, originalLibreSN);
+            long count = statement.simpleQueryForLong();
+
+            if (count == 0) {
+                // originalLibreSN отсутствует, создаем новую запись
+                sensorAliasesDb.execSQL("INSERT INTO sensorAliases (originalLibreSN, aliasSN) VALUES (?, ?);",
+                        new String[]{originalLibreSN, sensorAlias});
+            } else {
+                // originalLibreSN существует, обновляем запись
+                sensorAliasesDb.execSQL("UPDATE sensorAliases SET aliasSN = ? WHERE originalLibreSN = ?;",
+                        new String[]{sensorAlias, originalLibreSN});
+            }
+
+            sensorAliasesDb.setTransactionSuccessful();
+        } finally {
+            sensorAliasesDb.endTransaction();
+        }
     }
 
-    @Override
-    public boolean isTableNull() {
-        return SqlUtils.isTableNull(this.db.getSQLite(), TableStrings.TABLE_NAME);
+    public int getLastStoredSensorId() {
+        SensorRow[] rows = this.queryRows();
+        return rows[rows.length - 1].getSensorId();
+    }
+
+    public String getLastSensorSerialNumber() {
+        SensorRow[] rows = this.queryRows();
+        return rows[rows.length - 1].getSerialNumber();
     }
 
     public void setFakeSerialNumberForLastSensor() throws Exception {
-        String sql = String.format("UPDATE %s SET %s=?, %s=?, %s=? WHERE %s=?", TableStrings.TABLE_NAME,
-                TableStrings.uniqueIdentifier,
-                TableStrings.serialNumber,
-                TableStrings.CRC,
-                TableStrings.sensorId);
-
-        this.uniqueIdentifier = PatchUID.generateFake();
-        this.serialNumber = PatchUID.decodeSerialNumber(uniqueIdentifier);
-        this.sensorId = getLastStoredSensorId();
-        this.CRC = computeCRC32();
-        try (SQLiteStatement statement = db.getSQLite().compileStatement(sql)) {
-            statement.bindBlob(1, uniqueIdentifier);
-            statement.bindString(2, serialNumber);
-            statement.bindLong(3, CRC);
-            statement.bindLong(4, sensorId);
-            statement.execute();
-        }
-
-        this.onTableChanged();
+        String serialNumberOfLastSensor = this.getLastSensorSerialNumber();
+        this.setFakeSerialNumberForSensor(serialNumberOfLastSensor);
     }
 
-    public void endCurrentSensor() throws Exception {
-        String sql = String.format("UPDATE %s SET %s=?, %s=?, %s=?, %s=? WHERE %s=?",
-                TableStrings.TABLE_NAME,
-                TableStrings.sensorStartTimestampLocal,
-                TableStrings.sensorStartTimestampUTC,
-                TableStrings.endedEarly,
-                TableStrings.CRC,
-                TableStrings.sensorId);
+    public void endLastSensor() throws Exception {
+        String serialNumberOfLastSensor = this.getLastSensorSerialNumber();
+        this.endSensor(serialNumberOfLastSensor);
+    }
 
-        this.sensorStartTimestampUTC = Utils.withoutNanos(LocalDateTime.now().minusDays(14).toInstant(ZoneOffset.UTC).toEpochMilli());
-        this.sensorStartTimestampLocal = Utils.withoutNanos(Utils.unixAsLocal(sensorStartTimestampUTC));
-        this.endedEarly = false;
-        this.sensorId = getLastStoredSensorId();
-        this.CRC = computeCRC32();
+    private void setFakeSerialNumberForSensor(String libreSN) throws Exception {
 
-        try (SQLiteStatement statement = db.getSQLite().compileStatement(sql)) {
-            statement.bindLong(1, this.sensorStartTimestampLocal);
-            statement.bindLong(2, this.sensorStartTimestampUTC);
-            statement.bindLong(3, (this.endedEarly) ? 1 : 0);
-            statement.bindLong(4, CRC);
-            statement.bindLong(5, sensorId);
+        SensorRow[] rows = this.queryRows();
 
-            statement.execute();
-        }
+        SensorRow sensorRow = Arrays.stream(rows).filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst().orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
+
+        byte[] fakePatchUID = PatchUID.generateFake();
+        String fakeLibreSN = PatchUID.decodeSerialNumber(fakePatchUID);
+        sensorRow.setSerialNumber(fakeLibreSN).setUniqueIdentifier(fakePatchUID).replace();
+    }
+
+    private void endSensor(String libreSN) throws Exception {
+        SensorRow[] rows = this.queryRows();
+
+        SensorRow sensorRow = Arrays.stream(rows).filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst().orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
+
+        long sensorStartTimestampUTC = Utils.withoutNanos(LocalDateTime.now().minusDays(14).toInstant(ZoneOffset.UTC).toEpochMilli());
+        long sensorStartTimestampLocal = Utils.withoutNanos(Utils.unixAsLocal(sensorStartTimestampUTC));
+
+        sensorRow.setSensorStartTimestampLocal(sensorStartTimestampLocal)
+                .setSensorStartTimestampUTC(sensorStartTimestampUTC)
+                .setEndedEarly(false)
+                .replace();
 
         this.onSensorEnded();
-        this.onTableChanged();
     }
 
     private void onSensorEnded() {
@@ -423,62 +287,25 @@ public class SensorTable implements CrcTable, TimeTable {
         //db.getSensorSelectionRangeTable().endCurrentSensor();
     }
 
-    private byte[] attenuationState;
-    private byte[] bleAddress;
-    private byte[] compositeState;
-    private int enableStreamingTimestamp;
-    private boolean endedEarly;
-    private byte[] initialPatchInformation;
-    private int lastScanSampleNumber;
-    private String lastScanTimeZone;
-    private long lastScanTimestampLocal;
-    private long lastScanTimestampUTC;
-    private boolean lsaDetected;
-    private byte[] measurementState;
-    private int personalizationIndex;
-    private int sensorId;
-    private String sensorStartTimeZone;
-    private long sensorStartTimestampLocal;
-    private long sensorStartTimestampUTC;
-    private String serialNumber;
-    private byte[] streamingAuthenticationData;
-    private int streamingUnlockCount;
-    private byte[] uniqueIdentifier;
-    private long unrecordedHistoricTimeChange;
-    private long unrecordedRealTimeTimeChange;
-    private int userId;
-    private int warmupPeriodInMinutes;
-    private int wearDurationInMinutes;
-    private long CRC;
+    @Override
+    public String getName() {
+        return "sensors";
+    }
 
-    private static class TableStrings {
-        final static String TABLE_NAME = "sensors";
-        final static String attenuationState = "attenuationState";
-        final static String bleAddress = "bleAddress";
-        final static String compositeState = "compositeState";
-        final static String enableStreamingTimestamp = "enableStreamingTimestamp";
-        final static String endedEarly = "endedEarly";
-        final static String initialPatchInformation = "initialPatchInformation";
-        final static String lastScanSampleNumber = "lastScanSampleNumber";
-        final static String lastScanTimeZone = "lastScanTimeZone";
-        final static String lastScanTimestampLocal = "lastScanTimestampLocal";
-        final static String lastScanTimestampUTC = "lastScanTimestampUTC";
-        final static String lsaDetected = "lsaDetected";
-        final static String measurementState = "measurementState";
-        final static String personalizationIndex = "personalizationIndex";
-        final static String sensorId = "sensorId";
-        final static String sensorStartTimeZone = "sensorStartTimeZone";
-        final static String sensorStartTimestampLocal = "sensorStartTimestampLocal";
-        final static String sensorStartTimestampUTC = "sensorStartTimestampUTC";
-        final static String serialNumber = "serialNumber";
-        final static String streamingAuthenticationData = "streamingAuthenticationData";
-        final static String streamingUnlockCount = "streamingUnlockCount";
-        final static String uniqueIdentifier = "uniqueIdentifier";
-        final static String unrecordedHistoricTimeChange = "unrecordedHistoricTimeChange";
-        final static String unrecordedRealTimeTimeChange = "unrecordedRealTimeTimeChange";
-        final static String userId = "userId";
-        final static String warmupPeriodInMinutes = "warmupPeriodInMinutes";
-        final static String wearDurationInMinutes = "wearDurationInMinutes";
-        final static String CRC = "CRC";
+    @Override
+    public SensorRow[] queryRows() {
+        List<SensorRow> rowList = new ArrayList<>();
+
+        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
+            rowList.add(new SensorRow(this, rowIndex));
+        }
+
+        return rowList.toArray(new SensorRow[0]);
+    }
+
+    @Override
+    public LibreLinkDatabase getDatabase() {
+        return db;
     }
 }
