@@ -8,22 +8,6 @@ import android.database.sqlite.SQLiteStatement;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 
 public class SqlUtils {
-    protected static int getRowLength(SQLiteDatabase db, Table table){
-        String query = "SELECT COUNT(*) FROM " + table.getName();
-        Cursor cursor = db.rawQuery(query, null);
-        int rowCount = 0;
-
-        if (cursor != null) {
-            if (cursor.moveToFirst()) {
-                rowCount = cursor.getInt(0);
-            }
-            cursor.close();
-        }
-
-        return rowCount;
-    }
-
-
     protected static int countTables(SQLiteDatabase db){
         Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM sqlite_master WHERE type='table'", null);
         cursor.moveToFirst();

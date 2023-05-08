@@ -3,7 +3,6 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteStatement;
-import android.inputmethodservice.Keyboard;
 
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorSelectionRangeTable;
@@ -17,19 +16,21 @@ import java.util.zip.CRC32;
 
 public class SensorSelectionRangeRow implements Row {
     private final SensorSelectionRangeTable table;
-
     private final List<SQLiteStatement> sqlChangingList = new ArrayList<>();
 
     public SensorSelectionRangeRow(final SensorSelectionRangeTable table,
-                                   final int rowIndex){
+                                   final int rowIndex) {
         this.table = table;
-        String query = String.format("SELECT * FROM %s WHERE _rowid_=%s", table.getName(), rowIndex);
+        String query = Row.getBaseRowSearchingSQL(table);
         Cursor cursor = table.getDatabase().getSQLite().rawQuery(query, null);
+        cursor.moveToPosition(rowIndex); // перемещаемся на строку с индексом rowIndex
+
         this.endTimestampUTC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.endTimestampUTC));
         this.rangeId = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.rangeId));
         this.sensorId = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.sensorId));
         this.startTimestampUTC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.startTimestampUTC));
         this.CRC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.CRC));
+
         cursor.close();
     }
 
@@ -37,51 +38,51 @@ public class SensorSelectionRangeRow implements Row {
                                    final long endTimestampUTC,
                                    final int rangeId,
                                    final int sensorId,
-                                   final long startTimestampUTC) throws IOException {
+                                   final long startTimestampUTC) {
         this.table = table;
+
         this.endTimestampUTC = endTimestampUTC;
         this.rangeId = rangeId;
         this.sensorId = sensorId;
         this.startTimestampUTC = startTimestampUTC;
-        this.CRC = this.computeCRC32();
     }
 
-    public void insertOrThrow() {
+    @Override
+    public void insertOrThrow() throws IOException {
 
         ContentValues values = new ContentValues();
         values.put(RowColumns.endTimestampUTC, endTimestampUTC);
         values.put(RowColumns.rangeId, rangeId);
         values.put(RowColumns.sensorId, sensorId);
         values.put(RowColumns.startTimestampUTC, startTimestampUTC);
-        values.put(RowColumns.CRC, CRC);
+        values.put(RowColumns.CRC, this.computeCRC32());
 
         table.getDatabase().getSQLite().insertOrThrow(table.getName(), null, values);
+        table.rowInserted();
     }
 
     public void replace() throws IOException {
         this.setCRC(this.computeCRC32()); // setCRC добавляет SQL запрос на изменение CRC
         sqlChangingList.forEach(SQLiteStatement::execute);
+        sqlChangingList.forEach(SQLiteStatement::close);
         sqlChangingList.clear();
     }
 
-    public SensorSelectionRangeRow setEndTimestampUTC(long endTimestampUTC){
+    public SensorSelectionRangeRow setEndTimestampUTC(long endTimestampUTC) {
         this.endTimestampUTC = endTimestampUTC;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.endTimestampUTC))){
-            statement.bindLong(1, endTimestampUTC);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(table, RowColumns.endTimestampUTC, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, endTimestampUTC);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    private SensorSelectionRangeRow setCRC(long CRC){
+    private void setCRC(long CRC) {
         this.CRC = CRC;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.CRC))){
-            statement.bindLong(1, CRC);
-            this.sqlChangingList.add(statement);
-        }
-        return this;
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(table, RowColumns.CRC, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, CRC);
+        this.sqlChangingList.add(statement);
     }
 
     public long computeCRC32() throws IOException {
@@ -98,14 +99,14 @@ public class SensorSelectionRangeRow implements Row {
         return crc32.getValue();
     }
 
-    private String getBaseUpdatingSQL(String fieldName){
-        return String.format("UPDATE %s SET %s=?", table.getName(), fieldName);
+
+    public int getRangeId() {
+        return rangeId;
     }
 
-
-    public int getRangeId(){ return rangeId; }
-    public int getSensorId(){ return sensorId; }
-
+    public int getSensorId() {
+        return sensorId;
+    }
 
 
     private long endTimestampUTC;

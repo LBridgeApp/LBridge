@@ -4,12 +4,16 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 
+import androidx.annotation.NonNull;
+
 import com.example.nfc_libre_scan.App;
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.libre.PatchUID;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -23,45 +27,86 @@ public class SensorTable implements Table {
 
     private final LibreLinkDatabase db;
     private SQLiteDatabase sensorAliasesDb;
+    private SensorRow[] rows;
 
     public SensorTable(LibreLinkDatabase db) {
         this.db = db;
+        this.rows = this.queryRows();
         this.createSensorAliasTable();
     }
 
-    private boolean isSensorExpired(String libreSN) {
+    public void updateToLastScan(LibreMessage libreMessage) throws Exception {
 
-        SensorRow[] rows = this.queryRows();
-        SensorRow sensorRow = Arrays.stream(rows)
-                .filter(row -> row.getSerialNumber().equals(libreSN))
-                .findFirst().orElse(null);
-        if (sensorRow == null) {
-            return false;
+        String originalSN = libreMessage.getLibreSN();
+        String sensorAlias = getSensorAlias(libreMessage.getLibreSN());
+
+        Logger.inf(String.format("Original serial number: %s." + "Sensor alias: %s", originalSN, sensorAlias));
+
+        if (sensorAlias == null) {
+            Logger.inf(String.format("Sensor alias for sensor with serial number %s does not exists in our db. Adding...", libreMessage.getLibreSN()));
+            this.setSensorAlias(libreMessage.getLibreSN(), libreMessage.getLibreSN());
+            Logger.ok("Alias added");
         }
 
-        long sensorStartTimestampUTC = sensorRow.getSensorStartTimestampUTC();
-        boolean endedEarly = sensorRow.getEndedEarly();
+        boolean isSensorAliasExists = isSensorExists(getSensorAlias(originalSN));
+        boolean isSensorAliasExpired = isSensorExpired(originalSN);
 
-        Instant startInstant = Instant.ofEpochMilli(sensorStartTimestampUTC);
-        Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
-        long sensorExpirationTimestamp = endInstant.toEpochMilli();
+        if (!isSensorAliasExists) {
+            // если сенсор новый или всё-таки продленный, но отсутствует в базе.
+            String originalLibreSN = libreMessage.getLibreSN();
 
-        long currentTimestamp = System.currentTimeMillis();
+            Logger.inf(String.format("Sensor with serial number %s and alias %s does not exists in db. " +
+                    "Creating new sensor record. Sensor alias is %s", originalLibreSN, originalLibreSN, originalLibreSN));
 
-        return currentTimestamp >= sensorExpirationTimestamp || endedEarly;
-    }
+            byte[] originalPatchUID = libreMessage.getRawLibreData().getPatchUID();
 
-    private boolean isSensorExists(String libreSN) {
-        SensorRow[] rows = this.queryRows();
+            this.setSensorAlias(originalLibreSN, originalLibreSN);
 
-        SensorRow sensorRow = Arrays.stream(rows)
-                .filter(row -> row.getSerialNumber().equals(libreSN))
-                .findFirst().orElse(null);
-        return sensorRow != null;
+            this.createNewSensorRecord(libreMessage, originalLibreSN, originalPatchUID);
+
+            long sensorStartTimestampUTC = db.getLibreMessage().getSensorStartTimestampUTC();
+            db.getSensorSelectionRangeTable().createNewSensorRecord(sensorStartTimestampUTC);
+
+            Logger.ok("New record added.");
+
+        } else if (isSensorAliasExpired) {
+            // если срок действия сенсора истёк
+
+            String originalLibreSN = libreMessage.getLibreSN();
+
+            String expiredAlias = getSensorAlias(originalLibreSN);
+
+            byte[] fakePatchUID = PatchUID.generateFake();
+
+            String fakeLibreSN = PatchUID.decodeSerialNumber(fakePatchUID);
+
+            Logger.inf(String.format("Sensor with serial number %s and alias %s expired in db. " +
+                            "Creating new sensor record with fake alias %s...",
+                    originalLibreSN, expiredAlias, fakeLibreSN));
+
+            this.setSensorAlias(originalLibreSN, fakeLibreSN);
+
+            db.getSensorSelectionRangeTable().endSensor(expiredAlias);
+
+            this.createNewSensorRecord(libreMessage, fakeLibreSN, fakePatchUID);
+
+            long sensorStartTimestampUTC = db.getLibreMessage().getSensorStartTimestampUTC();
+            db.getSensorSelectionRangeTable().createNewSensorRecord(sensorStartTimestampUTC);
+
+            Logger.ok("New record added.");
+
+        } else {
+            String originalLibreSN = libreMessage.getLibreSN();
+            String alias = getSensorAlias(libreMessage.getLibreSN());
+            Logger.inf(String.format("Updating sensor record with serial number %s and alias %s ...",
+                    originalLibreSN, alias));
+
+            this.updateSensorRecord(libreMessage, alias);
+            Logger.ok("Record updated.");
+        }
     }
 
     private void createNewSensorRecord(LibreMessage libreMessage, String serialNumber, byte[] uniqueIdentifier) throws Exception {
-
         byte[] attenuationState = libreMessage.getLibreSavedState().getAttenuationState();
         byte[] bleAddress = null;
         byte[] compositeState = libreMessage.getLibreSavedState().getCompositeState();
@@ -96,17 +141,11 @@ public class SensorTable implements Table {
                 unrecordedHistoricTimeChange, unrecordedRealTimeTimeChange,
                 userId, warmupPeriodInMinutes, wearDurationInMinutes);
         row.insertOrThrow();
-        this.onNewSensorRecord();
-    }
-
-    private void onNewSensorRecord() throws Exception {
-        db.getSensorSelectionRangeTable().patchWithNewSensor();
     }
 
     private void updateSensorRecord(LibreMessage libreMessage, String libreAlias) throws Exception {
 
-        SensorRow[] sensorRows = this.queryRows();
-        SensorRow row = Arrays.stream(sensorRows)
+        SensorRow row = Arrays.stream(rows)
                 .filter(r -> r.getSerialNumber().equals(libreAlias))
                 .findFirst()
                 .orElse(null);
@@ -141,113 +180,15 @@ public class SensorTable implements Table {
                 .replace();
     }
 
-    public void updateToLastScan(LibreMessage libreMessage) throws Exception {
-
-        if (getSensorAlias(libreMessage.getLibreSN()) == null) {
-            this.setSensorAlias(libreMessage.getLibreSN(), libreMessage.getLibreSN());
-        }
-
-        boolean isSensorAliasExists = isSensorExists(getSensorAlias(libreMessage.getLibreSN()));
-        boolean isSensorAliasExpired = isSensorExpired(getSensorAlias(libreMessage.getLibreSN()));
-
-        if (!isSensorAliasExists) {
-            String originalLibreSN = libreMessage.getLibreSN();
-            byte[] originalPatchUID = libreMessage.getRawLibreData().getPatchUID();
-            this.setSensorAlias(originalLibreSN, originalLibreSN);
-            Logger.inf(String.format("Sensor with serial number %s does not exists in db. " +
-                    "Creating new sensor record...", originalLibreSN));
-            // если сенсор новый или всё-таки продленный, но отсутствует в базе.
-            this.createNewSensorRecord(libreMessage, originalLibreSN, originalPatchUID);
-        } else if (isSensorAliasExpired) {
-            // если срок действия сенсора истёк
-            String originalLibreSN = libreMessage.getLibreSN();
-            byte[] fakePatchUID = PatchUID.generateFake();
-            String fakeLibreSN = PatchUID.decodeSerialNumber(fakePatchUID);
-            this.setSensorAlias(originalLibreSN, fakeLibreSN);
-            Logger.inf(String.format("Sensor with serial number %s expired in db. " +
-                    "Creating new sensor record with fake ID...", originalLibreSN));
-            this.createNewSensorRecord(libreMessage, fakeLibreSN, fakePatchUID);
-        } else {
-            String originalLibreSN = libreMessage.getLibreSN();
-            String alias = getSensorAlias(libreMessage.getLibreSN());
-            Logger.inf(String.format("Updating sensor record with serial number %s and alias %s ...",
-                    originalLibreSN, alias));
-
-            this.updateSensorRecord(libreMessage, alias);
-        }
-    }
-
-    private String getSensorAlias(String originalLibreSN) {
-        String sql = "SELECT aliasSN FROM sensorAliases WHERE originalLibreSN = ?";
-        Cursor cursor = this.sensorAliasesDb.rawQuery(sql, new String[]{originalLibreSN});
-        String aliasSN = null;
-        if (cursor.moveToFirst()) {
-            aliasSN = cursor.getString(0);
-        }
-
-        cursor.close();
-        return aliasSN;
-    }
-
-    private void createSensorAliasTable() {
-        this.sensorAliasesDb = SQLiteDatabase.openOrCreateDatabase(App.getInstance().getApplicationContext()
-                .getDatabasePath("sensorAliases.db"), null);
-        try {
-            sensorAliasesDb.beginTransaction();
-            sensorAliasesDb.execSQL("CREATE TABLE IF NOT EXISTS sensorAliases (originalLibreSN TEXT NOT NULL, aliasSN TEXT NOT NULL, UNIQUE (`originalLibreSN`));");
-            sensorAliasesDb.setTransactionSuccessful();
-        } finally {
-            this.sensorAliasesDb.endTransaction();
-        }
-    }
-
-    private void setSensorAlias(String originalLibreSN, String sensorAlias) {
-        try {
-            this.sensorAliasesDb.beginTransaction();
-            String query = "SELECT COUNT(*) FROM sensorAliases WHERE originalLibreSN = ?";
-            SQLiteStatement statement = sensorAliasesDb.compileStatement(query);
-            statement.bindString(1, originalLibreSN);
-            long count = statement.simpleQueryForLong();
-
-            if (count == 0) {
-                // originalLibreSN отсутствует, создаем новую запись
-                sensorAliasesDb.execSQL("INSERT INTO sensorAliases (originalLibreSN, aliasSN) VALUES (?, ?);",
-                        new String[]{originalLibreSN, sensorAlias});
-            } else {
-                // originalLibreSN существует, обновляем запись
-                sensorAliasesDb.execSQL("UPDATE sensorAliases SET aliasSN = ? WHERE originalLibreSN = ?;",
-                        new String[]{sensorAlias, originalLibreSN});
-            }
-
-            sensorAliasesDb.setTransactionSuccessful();
-        } finally {
-            sensorAliasesDb.endTransaction();
-        }
-    }
-
-    public int getLastStoredSensorId() {
-        SensorRow[] rows = this.queryRows();
-        return rows[rows.length - 1].getSensorId();
+    public int getLastSensorId() {
+        return (rows.length != 0) ? rows[rows.length - 1].getSensorId() : 0;
     }
 
     public String getLastSensorSerialNumber() {
-        SensorRow[] rows = this.queryRows();
-        return rows[rows.length - 1].getSerialNumber();
-    }
-
-    public void setFakeSerialNumberForLastSensor() throws Exception {
-        String serialNumberOfLastSensor = this.getLastSensorSerialNumber();
-        this.setFakeSerialNumberForSensor(serialNumberOfLastSensor);
-    }
-
-    public void endLastSensor() throws Exception {
-        String serialNumberOfLastSensor = this.getLastSensorSerialNumber();
-        this.endSensor(serialNumberOfLastSensor);
+        return (rows.length != 0) ? rows[rows.length - 1].getSerialNumber() : null;
     }
 
     private void setFakeSerialNumberForSensor(String libreSN) throws Exception {
-
-        SensorRow[] rows = this.queryRows();
 
         SensorRow sensorRow = Arrays.stream(rows).filter(row -> row.getSerialNumber().equals(libreSN))
                 .findFirst().orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
@@ -257,13 +198,17 @@ public class SensorTable implements Table {
         sensorRow.setSerialNumber(fakeLibreSN).setUniqueIdentifier(fakePatchUID).replace();
     }
 
+    public void setFakeSerialNumberForLastSensor() throws Exception {
+        String serialNumberOfLastSensor = this.getLastSensorSerialNumber();
+        this.setFakeSerialNumberForSensor(serialNumberOfLastSensor);
+    }
+
     private void endSensor(String libreSN) throws Exception {
-        SensorRow[] rows = this.queryRows();
 
         SensorRow sensorRow = Arrays.stream(rows).filter(row -> row.getSerialNumber().equals(libreSN))
                 .findFirst().orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
 
-        long sensorStartTimestampUTC = Utils.withoutNanos(LocalDateTime.now().minusDays(14).toInstant(ZoneOffset.UTC).toEpochMilli());
+        long sensorStartTimestampUTC = Utils.withoutNanos(LocalDateTime.now().minusDays(15).toInstant(ZoneOffset.UTC).toEpochMilli());
         long sensorStartTimestampLocal = Utils.withoutNanos(Utils.unixAsLocal(sensorStartTimestampUTC));
 
         sensorRow.setSensorStartTimestampLocal(sensorStartTimestampLocal)
@@ -272,6 +217,46 @@ public class SensorTable implements Table {
                 .replace();
 
         this.onSensorEnded();
+    }
+
+    public void endLastSensor() throws Exception {
+        String serialNumberOfLastSensor = this.getLastSensorSerialNumber();
+        this.endSensor(serialNumberOfLastSensor);
+    }
+
+    private boolean isSensorExpired(String libreSN) throws Exception {
+        if (libreSN == null) {
+            throw new Exception("LibreSN is null");
+        }
+
+        SensorRow sensorRow = Arrays.stream(rows)
+                .filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst().orElse(null);
+        if (sensorRow == null) {
+            return false;
+        }
+
+        long sensorStartTimestampUTC = sensorRow.getSensorStartTimestampUTC();
+        boolean endedEarly = sensorRow.getEndedEarly();
+
+        Instant startInstant = Instant.ofEpochMilli(sensorStartTimestampUTC);
+        Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
+        long sensorExpirationTimestamp = endInstant.toEpochMilli();
+
+        long currentTimestamp = System.currentTimeMillis();
+
+        return currentTimestamp >= sensorExpirationTimestamp || endedEarly;
+    }
+
+    private boolean isSensorExists(String libreSN) throws Exception {
+        if (libreSN == null) {
+            throw new Exception("LibreSN is null");
+        }
+
+        SensorRow sensorRow = Arrays.stream(rows)
+                .filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst().orElse(null);
+        return sensorRow != null;
     }
 
     private void onSensorEnded() {
@@ -284,7 +269,57 @@ public class SensorTable implements Table {
         // Если в SensorSelectionRanges сенсор закончить,
         // то красная надпись пропадет, а будет просто желтая полоса
         // с предложением отсканировать новый сенсор.
-        //db.getSensorSelectionRangeTable().endCurrentSensor();
+    }
+
+    private void createSensorAliasTable() {
+        this.sensorAliasesDb = SQLiteDatabase.openOrCreateDatabase(App.getInstance().getApplicationContext()
+                .getDatabasePath("sensorAliases.db"), null);
+        try {
+            sensorAliasesDb.beginTransaction();
+            sensorAliasesDb.execSQL("CREATE TABLE IF NOT EXISTS sensorAliases (originalLibreSN TEXT NOT NULL, fakeSN TEXT NOT NULL, UNIQUE (`originalLibreSN`), UNIQUE (`fakeSN`));");
+            sensorAliasesDb.setTransactionSuccessful();
+            Logger.ok("Sensor alias table exists or created.");
+        } finally {
+            this.sensorAliasesDb.endTransaction();
+        }
+    }
+
+    private String getSensorAlias(String originalLibreSN) {
+        String sql = "SELECT fakeSN FROM sensorAliases WHERE originalLibreSN = ?";
+        Cursor cursor = this.sensorAliasesDb.rawQuery(sql, new String[]{originalLibreSN});
+        String aliasSN = null;
+        if (cursor.moveToFirst()) {
+            aliasSN = cursor.getString(0);
+        }
+
+        cursor.close();
+        return aliasSN;
+    }
+
+    private void setSensorAlias(String originalLibreSN, String sensorAlias) {
+        try {
+            this.sensorAliasesDb.beginTransaction();
+            String query = "SELECT COUNT(*) FROM sensorAliases WHERE originalLibreSN = ?";
+            SQLiteStatement statement = sensorAliasesDb.compileStatement(query);
+            statement.bindString(1, originalLibreSN);
+            long count = statement.simpleQueryForLong();
+
+            if (count == 0) {
+                // originalLibreSN отсутствует, создаем новую запись
+                sensorAliasesDb.execSQL("INSERT INTO sensorAliases (originalLibreSN, fakeSN) VALUES (?, ?);",
+                        new String[]{originalLibreSN, sensorAlias});
+                Logger.ok(String.format("Created alias for sensor serial number %s, alias is %s", originalLibreSN, sensorAlias));
+            } else {
+                // originalLibreSN существует, обновляем запись
+                sensorAliasesDb.execSQL("UPDATE sensorAliases SET fakeSN = ? WHERE originalLibreSN = ?;",
+                        new String[]{sensorAlias, originalLibreSN});
+                Logger.ok(String.format("Updated alias for sensor serial number %s, new alias is %s", originalLibreSN, sensorAlias));
+            }
+
+            sensorAliasesDb.setTransactionSuccessful();
+        } finally {
+            sensorAliasesDb.endTransaction();
+        }
     }
 
     @Override
@@ -296,12 +331,17 @@ public class SensorTable implements Table {
     public SensorRow[] queryRows() {
         List<SensorRow> rowList = new ArrayList<>();
 
-        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        int rowLength = Table.getRowLength(db.getSQLite(), this);
         for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
             rowList.add(new SensorRow(this, rowIndex));
         }
 
         return rowList.toArray(new SensorRow[0]);
+    }
+
+    @Override
+    public void rowInserted() {
+        this.rows = this.queryRows();
     }
 
     @Override

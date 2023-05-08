@@ -1,12 +1,8 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.HistoricReadingRow;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
 import com.oop1.GlucoseUnit;
 import com.oop1.HistoricBg;
 
@@ -17,16 +13,20 @@ import java.util.List;
 
 public class HistoricReadingTable implements Table {
     private final LibreLinkDatabase db;
+    private HistoricReadingRow[] rows;
     public HistoricReadingTable(LibreLinkDatabase db) {
         this.db = db;
+        this.rows = this.queryRows();
+    }
+
+    public int getLastStoredSampleNumber(){
+        return (rows.length != 0) ? rows[rows.length - 1].getSampleNumber() : 0;
     }
 
     public void addLastSensorScan(LibreMessage libreMessage) throws Exception {
         //SqlUtils.validateTime(this, libreMessage);
 
-        HistoricReadingRow[] rows = this.queryRows();
-
-        final int lastStoredSampleNumber = rows[rows.length - 1].getSampleNumber();
+        final int lastStoredSampleNumber = getLastStoredSampleNumber();
 
         HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgs())
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)
@@ -41,7 +41,7 @@ public class HistoricReadingTable implements Table {
 
         double glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         int sampleNumber = historicBg.getSampleNumber();
-        int sensorId = db.getSensorTable().getLastStoredSensorId();
+        int sensorId = db.getSensorTable().getLastSensorId();
         int timeChangeBefore = 0;
         String timeZone = historicBg.getTimeZone();
         long timestampLocal = Utils.withoutNanos(historicBg.getTimestampLocal());
@@ -53,8 +53,7 @@ public class HistoricReadingTable implements Table {
     }
 
     public int getLastStoredReadingId(){
-        HistoricReadingRow[] rows = this.queryRows();
-        return rows[rows.length - 1].getReadingId();
+        return (rows.length != 0) ? rows[rows.length - 1].getReadingId() : 0;
     }
 
     @Override
@@ -69,13 +68,19 @@ public class HistoricReadingTable implements Table {
 
     @Override
     public HistoricReadingRow[] queryRows(){
+
         List<HistoricReadingRow> rowList = new ArrayList<>();
 
-        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        int rowLength = Table.getRowLength(db.getSQLite(), this);
         for(int rowIndex = 0; rowIndex < rowLength; rowIndex++){
             rowList.add(new HistoricReadingRow(this, rowIndex));
         }
 
         return rowList.toArray(new HistoricReadingRow[0]);
+    }
+
+    @Override
+    public void rowInserted() {
+        rows = this.queryRows();
     }
 }

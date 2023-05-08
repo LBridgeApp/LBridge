@@ -1,8 +1,7 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
-import android.database.sqlite.SQLiteStatement;
-
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
 
 import java.util.ArrayList;
@@ -12,38 +11,41 @@ import java.util.List;
 public class SensorSelectionRangeTable implements Table {
 
     private final LibreLinkDatabase db;
-    private final LibreMessage libreMessage;
+    private SensorSelectionRangeRow[] rows;
 
     SensorSelectionRangeTable(LibreLinkDatabase db) {
         this.db = db;
-        this.libreMessage = db.getLibreMessage();
+        this.rows = this.queryRows();
     }
 
     protected void endSensor(String libreSN) throws Exception {
 
-        SensorSelectionRangeRow[] rows = this.queryRows();
         SensorTable sensorTable = db.getSensorTable();
-        int lastSensorId = sensorTable.getLastStoredSensorId();
+        SensorRow[] sensorRows = sensorTable.queryRows();
+        SensorRow sensorRow = Arrays.stream(sensorRows)
+                .filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst()
+                .orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
 
-        SensorSelectionRangeRow sensorRow = Arrays.stream(rows).filter(t -> t.getSensorId() == lastSensorId)
-                .findFirst().orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
+        SensorSelectionRangeRow rangeRow = Arrays.stream(rows)
+                .filter(row -> row.getSensorId() == sensorRow.getSensorId())
+                .findFirst()
+                .orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
 
-        sensorRow.setEndTimestampUTC(System.currentTimeMillis()).replace();
+        rangeRow.setEndTimestampUTC(System.currentTimeMillis()).replace();
     }
 
-    public void patchWithNewSensor() throws Exception {
+    /*public void patchWithNewSensor(String oldSensorSN) throws Exception {
         // а вот когда мы стартуем новый сенсор,
         // вот тогда надо закончить сенсор здесь.
         // см. private void onSensorEnded() класса SensorTable.
-        SensorSelectionRangeRow[] rows = this.queryRows();
-        if (rows.length == 0) {
-            String lastSensorSerialNumber = db.getSensorTable().getLastSensorSerialNumber();
-            this.endSensor(lastSensorSerialNumber);
+        if (rows.length != 0) {
+            this.endSensor(oldSensorSN);
         }
-        this.createNewSensorRecord();
-    }
+        this.createNewSensorRecord(db.getLibreMessage());
+    }*/
 
-    private void createNewSensorRecord() throws Exception {
+    protected void createNewSensorRecord(long sensorStartTimestampUTC) throws Exception {
 
         // В таблице LibreLink для действующего сенсора
         // значение конца времени действия равно
@@ -52,15 +54,17 @@ public class SensorSelectionRangeTable implements Table {
         // значение rangeId равно значению sensorId
         // rangeId писать НУЖНО, так как автоматически он НЕ увеличивается.
 
-        SensorSelectionRangeRow[] rows = this.queryRows();
-        int rangeId = rows[rows.length - 1].getRangeId() + 1;
+        int rangeId = getLastStoredRangeId() + 1;
 
-        int sensorId = db.getSensorTable().getLastStoredSensorId();
-        long startTimestampUTC = libreMessage.getSensorStartTimestampUTC();
+        int sensorId = db.getSensorTable().getLastSensorId();
 
         SensorSelectionRangeRow row = new SensorSelectionRangeRow(this,
-                endTimestampUTC, rangeId, sensorId, startTimestampUTC);
+                endTimestampUTC, rangeId, sensorId, sensorStartTimestampUTC);
         row.insertOrThrow();
+    }
+
+    public int getLastStoredRangeId() {
+        return (rows.length != 0) ? rows[rows.length - 1].getRangeId() : 0;
     }
 
     @Override
@@ -72,12 +76,17 @@ public class SensorSelectionRangeTable implements Table {
     public SensorSelectionRangeRow[] queryRows() {
         List<SensorSelectionRangeRow> rowList = new ArrayList<>();
 
-        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        int rowLength = Table.getRowLength(db.getSQLite(), this);
         for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
             rowList.add(new SensorSelectionRangeRow(this, rowIndex));
         }
 
         return rowList.toArray(new SensorSelectionRangeRow[0]);
+    }
+
+    @Override
+    public void rowInserted() {
+        this.rows = this.queryRows();
     }
 
     @Override

@@ -43,7 +43,7 @@ public class LibreLinkDatabase {
         performAction(() -> sensorTable.endLastSensor());
     }
 
-    private void open() throws Exception {
+    private void open() {
         this.db = SQLiteDatabase.openDatabase(context.getDatabasePath(SAS_DB).getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
 
         historicReadingTable = new HistoricReadingTable(this);

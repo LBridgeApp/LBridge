@@ -6,7 +6,6 @@ import android.database.Cursor;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.RealTimeReadingTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
-import com.oop1.CurrentBg;
 import com.oop1.GlucoseUnit;
 
 import java.io.ByteArrayOutputStream;
@@ -20,8 +19,9 @@ public class RealTimeReadingRow implements Row {
     public RealTimeReadingRow(final RealTimeReadingTable table,
                               final int rowIndex){
         this.table = table;
-        String query = String.format("SELECT * FROM %s WHERE _rowid_=%s", table.getName(), rowIndex);
+        String query = Row.getBaseRowSearchingSQL(table);
         Cursor cursor = table.getDatabase().getSQLite().rawQuery(query, null);
+        cursor.moveToPosition(rowIndex); // перемещаемся на строку с индексом rowIndex
 
         this.alarm = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.alarm));
         this.glucoseValue = cursor.getDouble(cursor.getColumnIndexOrThrow(RowColumns.glucoseValue));
@@ -35,6 +35,7 @@ public class RealTimeReadingRow implements Row {
         this.timestampUTC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.timestampUTC));
         this.trendArrow = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.trendArrow));
         this.CRC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.CRC));
+
         cursor.close();
     }
 
@@ -49,8 +50,9 @@ public class RealTimeReadingRow implements Row {
                               final String timeZone,
                               final long timestampLocal,
                               final long timestampUTC,
-                              final int trendArrow) throws IOException {
+                              final int trendArrow) {
         this.table = table;
+
         this.alarm = this.computeAlarm(libreMessage);
         this.glucoseValue = glucoseValue;
         this.isActionable = isActionable;
@@ -62,11 +64,10 @@ public class RealTimeReadingRow implements Row {
         this.timestampLocal = timestampLocal;
         this.timestampUTC = timestampUTC;
         this.trendArrow = trendArrow;
-        this.CRC = this.computeCRC32();
     }
 
-    public void insertOrThrow() {
-
+    @Override
+    public void insertOrThrow() throws IOException {
         ContentValues values = new ContentValues();
         values.put(RowColumns.alarm, alarm);
         values.put(RowColumns.glucoseValue, glucoseValue);
@@ -80,9 +81,10 @@ public class RealTimeReadingRow implements Row {
         values.put(RowColumns.timestampUTC, timestampUTC);
         values.put(RowColumns.timestampLocal, timestampLocal);
         values.put(RowColumns.trendArrow, trendArrow);
-        values.put(RowColumns.CRC, CRC);
+        values.put(RowColumns.CRC, this.computeCRC32());
 
         table.getDatabase().getSQLite().insertOrThrow(table.getName(), null, values);
+        table.rowInserted();
     }
 
     private int computeAlarm(LibreMessage libreMessage) {
@@ -140,14 +142,14 @@ public class RealTimeReadingRow implements Row {
     private final long timestampLocal;
     private final long timestampUTC;
     private final int trendArrow;
-    private final long CRC;
+    private long CRC;
 
     private static class RowColumns {
         final static String alarm = "alarm";
         final static String glucoseValue = "glucoseValue";
         final static String isActionable = "isActionable";
         final static String rateOfChange = "rateOfChange";
-        final static String readingId = "ReadingId";
+        final static String readingId = "readingId";
         final static String sensorId = "sensorId";
         final static String timeChangeBefore = "timeChangeBefore";
         final static String timeZone = "timeZone";

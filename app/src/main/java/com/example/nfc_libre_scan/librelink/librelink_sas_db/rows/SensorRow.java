@@ -2,21 +2,17 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
 
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.DatabaseUtils;
+import android.database.sqlite.SQLiteClosable;
 import android.database.sqlite.SQLiteStatement;
 
-import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.CRC32;
 
 public class SensorRow implements Row {
@@ -27,8 +23,9 @@ public class SensorRow implements Row {
                      final int rowIndex) {
         this.table = table;
 
-        String query = String.format("SELECT * FROM %s WHERE _rowid_=%s", table.getName(), rowIndex);
+        String query = Row.getBaseRowSearchingSQL(table);
         Cursor cursor = table.getDatabase().getSQLite().rawQuery(query, null);
+        cursor.moveToPosition(rowIndex); // перемещаемся на строку с индексом rowIndex
 
         this.attenuationState = cursor.getBlob(cursor.getColumnIndexOrThrow(RowColumns.attenuationState));
         this.bleAddress = cursor.getBlob(cursor.getColumnIndexOrThrow(RowColumns.bleAddress));
@@ -57,6 +54,7 @@ public class SensorRow implements Row {
         this.warmupPeriodInMinutes = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.warmupPeriodInMinutes));
         this.wearDurationInMinutes = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.wearDurationInMinutes));
         this.CRC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.CRC));
+
         cursor.close();
     }
 
@@ -85,8 +83,9 @@ public class SensorRow implements Row {
                      final long unrecordedRealTimeTimeChange,
                      final int userId,
                      final int warmupPeriodInMinutes,
-                     final int wearDurationInMinutes) throws IOException {
+                     final int wearDurationInMinutes) {
         this.table = table;
+
         this.attenuationState = attenuationState;
         this.bleAddress = bleAddress;
         this.compositeState = compositeState;
@@ -100,7 +99,7 @@ public class SensorRow implements Row {
         this.lsaDetected = lsaDetected;
         this.measurementState = measurementState;
         this.personalizationIndex = personalizationIndex;
-        this.sensorId = table.getLastStoredSensorId() + 1;
+        this.sensorId = table.getLastSensorId() + 1;
         this.sensorStartTimeZone = sensorStartTimeZone;
         this.sensorStartTimestampLocal = sensorStartTimestampLocal;
         this.sensorStartTimestampUTC = sensorStartTimestampUTC;
@@ -113,11 +112,10 @@ public class SensorRow implements Row {
         this.userId = userId;
         this.warmupPeriodInMinutes = warmupPeriodInMinutes;
         this.wearDurationInMinutes = wearDurationInMinutes;
-        this.CRC = this.computeCRC32();
-
     }
 
-    public void insertOrThrow() {
+    @Override
+    public void insertOrThrow() throws IOException {
 
         ContentValues values = new ContentValues();
         values.put(RowColumns.attenuationState, attenuationState);
@@ -146,14 +144,16 @@ public class SensorRow implements Row {
         values.put(RowColumns.userId, userId);
         values.put(RowColumns.warmupPeriodInMinutes, warmupPeriodInMinutes);
         values.put(RowColumns.wearDurationInMinutes, wearDurationInMinutes);
-        values.put(RowColumns.CRC, CRC);
+        values.put(RowColumns.CRC, this.computeCRC32());
 
         table.getDatabase().getSQLite().insertOrThrow(table.getName(), null, values);
+        table.rowInserted();
     }
 
     public void replace() throws IOException {
         this.setCRC(this.computeCRC32()); // setCRC добавляет SQL запрос на изменение CRC
         sqlChangingList.forEach(SQLiteStatement::execute);
+        sqlChangingList.forEach(SQLiteClosable::close);
         sqlChangingList.clear();
     }
 
@@ -169,144 +169,140 @@ public class SensorRow implements Row {
         return serialNumber;
     }
 
-    public int getSensorId(){
+    public int getSensorId() {
         return sensorId;
     }
 
-    public long getSensorStartTimestampUTC(){ return sensorStartTimestampUTC; }
-    public boolean getEndedEarly(){ return endedEarly; }
+    public long getSensorStartTimestampUTC() {
+        return sensorStartTimestampUTC;
+    }
+
+    public boolean getEndedEarly() {
+        return endedEarly;
+    }
 
     public SensorRow setAttenuationState(byte[] attenuationState) {
         this.attenuationState = attenuationState;
-        try (SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.attenuationState))) {
-            if(attenuationState == null){
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(table, RowColumns.attenuationState, RowColumns.sensorId, sensorId));
+            if (attenuationState == null) {
                 statement.bindNull(1);
-            }
-            else {
+            } else {
                 statement.bindBlob(1, attenuationState);
-            };
+            }
             sqlChangingList.add(statement);
-        }
         return this;
     }
 
 
     public SensorRow setCompositeState(byte[] compositeState) {
         this.compositeState = compositeState;
-        try (SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.compositeState))) {
-            if(compositeState == null){
-                statement.bindNull(1);
-            }
-            else {
-                statement.bindBlob(1, compositeState);
-            }
-            sqlChangingList.add(statement);
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL
+                        (table, RowColumns.compositeState, RowColumns.sensorId, sensorId));
+        if (compositeState == null) {
+            statement.bindNull(1);
+        } else {
+            statement.bindBlob(1, compositeState);
         }
+        sqlChangingList.add(statement);
         return this;
     }
 
-    private String getBaseUpdatingSQL(String fieldName){
-        return String.format("UPDATE %s SET %s=?", table.getName(), fieldName);
-    }
-
-    public SensorRow setLastScanSampleNumber(int lastScanSampleNumber){
+    public SensorRow setLastScanSampleNumber(int lastScanSampleNumber) {
         this.lastScanSampleNumber = lastScanSampleNumber;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.lastScanSampleNumber))){
-            statement.bindLong(1, lastScanSampleNumber);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.lastScanSampleNumber, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, lastScanSampleNumber);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setLastScanTimeZone(String lastScanTimeZone){
+    public SensorRow setLastScanTimeZone(String lastScanTimeZone) {
         this.lastScanTimeZone = lastScanTimeZone;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.lastScanTimeZone))){
-            statement.bindString(1, lastScanTimeZone);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(table, RowColumns.lastScanTimeZone, RowColumns.sensorId, sensorId));
+        statement.bindString(1, lastScanTimeZone);
+        this.sqlChangingList.add(statement);
         return this;
     }
-    public SensorRow setLastScanTimestampLocal(long lastScanTimestampLocal){
+
+    public SensorRow setLastScanTimestampLocal(long lastScanTimestampLocal) {
         this.lastScanTimestampLocal = lastScanTimestampLocal;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.lastScanTimestampLocal))){
-            statement.bindLong(1, lastScanTimestampLocal);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.lastScanTimestampLocal, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, lastScanTimestampLocal);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setLastScanTimestampUTC(long lastScanTimestampUTC){
+    public SensorRow setLastScanTimestampUTC(long lastScanTimestampUTC) {
         this.lastScanTimestampUTC = lastScanTimestampUTC;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.lastScanTimestampUTC))){
-            statement.bindLong(1, lastScanTimestampUTC);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(table, RowColumns.lastScanTimestampUTC, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, lastScanTimestampUTC);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setSerialNumber(String serialNumber){
+    public SensorRow setSerialNumber(String serialNumber) {
         this.serialNumber = serialNumber;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.serialNumber))){
-            statement.bindString(1, serialNumber);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.serialNumber, RowColumns.sensorId, sensorId));
+        statement.bindString(1, serialNumber);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setUniqueIdentifier(byte[] uniqueIdentifier){
+    public SensorRow setUniqueIdentifier(byte[] uniqueIdentifier) {
         this.uniqueIdentifier = uniqueIdentifier;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.uniqueIdentifier))){
-            statement.bindBlob(1, uniqueIdentifier);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.uniqueIdentifier, RowColumns.sensorId, sensorId));
+        statement.bindBlob(1, uniqueIdentifier);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setSensorStartTimestampLocal(long sensorStartTimestampLocal){
+    public SensorRow setSensorStartTimestampLocal(long sensorStartTimestampLocal) {
         this.sensorStartTimestampLocal = sensorStartTimestampLocal;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.sensorStartTimestampLocal))){
-            statement.bindLong(1, sensorStartTimestampLocal);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.sensorStartTimestampLocal, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, sensorStartTimestampLocal);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setSensorStartTimestampUTC(long sensorStartTimestampUTC){
+    public SensorRow setSensorStartTimestampUTC(long sensorStartTimestampUTC) {
         this.sensorStartTimestampUTC = sensorStartTimestampUTC;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.sensorStartTimestampUTC))){
-            statement.bindLong(1, sensorStartTimestampUTC);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.sensorStartTimestampUTC, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, sensorStartTimestampUTC);
+        this.sqlChangingList.add(statement);
         return this;
     }
 
-    private SensorRow setCRC(long CRC){
+    private void setCRC(long CRC) {
         this.CRC = CRC;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.CRC))){
-            statement.bindLong(1, CRC);
-            this.sqlChangingList.add(statement);
-        }
-        return this;
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.CRC, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, CRC);
+        this.sqlChangingList.add(statement);
     }
 
-    public SensorRow setEndedEarly(boolean endedEarly){
+    public SensorRow setEndedEarly(boolean endedEarly) {
         this.endedEarly = endedEarly;
-        try(SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(getBaseUpdatingSQL(RowColumns.endedEarly))){
-            statement.bindLong(1, (endedEarly) ? 1 : 0);
-            this.sqlChangingList.add(statement);
-        }
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.endedEarly, RowColumns.sensorId, sensorId));
+        statement.bindLong(1, (endedEarly) ? 1 : 0);
+        this.sqlChangingList.add(statement);
         return this;
     }
 

@@ -1,5 +1,6 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
 
+import android.content.ContentValues;
 import android.database.Cursor;
 
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
@@ -14,29 +15,41 @@ public class UserRow implements Row {
     private final UserTable table;
 
     public UserRow(final UserTable table,
-                   final int rowIndex){
+                   final int rowIndex) {
         this.table = table;
-        String query = String.format("SELECT * FROM %s WHERE _rowid_=%s", table.getName(), rowIndex);
+        String query = Row.getBaseRowSearchingSQL(table);
         Cursor cursor = table.getDatabase().getSQLite().rawQuery(query, null);
+        cursor.moveToPosition(rowIndex); // перемещаемся на строку с индексом rowIndex
 
         this.name = cursor.getString(cursor.getColumnIndexOrThrow(RowColumns.name));
         this.userId = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.userId));
         this.CRC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.CRC));
+
         cursor.close();
     }
 
     UserRow(final UserTable table,
             final String name,
-            final int userId) throws IOException {
+            final int userId) {
         this.table = table;
+
         this.name = name;
         this.userId = userId;
-        this.CRC = this.computeCRC32();
-
     }
 
-    public int getUserId(){
+    public int getUserId() {
         return userId;
+    }
+
+    @Override
+    public void insertOrThrow() throws IOException {
+        ContentValues values = new ContentValues();
+        values.put(RowColumns.name, name);
+        // не нужно менять userId, так как это значение само увеличивается при добавлении записи.
+        values.put(RowColumns.CRC, this.computeCRC32());
+
+        table.getDatabase().getSQLite().insertOrThrow(table.getName(), null, values);
+        table.rowInserted();
     }
 
     public long computeCRC32() throws IOException {
@@ -53,11 +66,11 @@ public class UserRow implements Row {
 
     private final String name;
     private final int userId;
-    private final long CRC;
+    private long CRC;
 
-    private static class RowColumns{
-        final static String name = "name";
-        final static String userId = "userId";
-        final static String CRC = "CRC";
-    }
+private static class RowColumns {
+    final static String name = "name";
+    final static String userId = "userId";
+    final static String CRC = "CRC";
+}
 }

@@ -1,5 +1,6 @@
 package com.example.nfc_libre_scan;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -10,9 +11,12 @@ import com.example.nfc_libre_scan.librelink.LibreLink;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class WebService extends Service {
     private WebServer server;
+    private final List<BroadcastReceiver> receivers = new ArrayList<>();
     private static WebService instance = null;
     @Override
     public IBinder onBind(Intent intent) {
@@ -29,6 +33,10 @@ public class WebService extends Service {
         } else {
             Logger.warn("WebService already running.");
         }
+    }
+
+    public void addBroadcastReceiver(BroadcastReceiver receiver){
+        this.receivers.add(receiver);
     }
 
     public static void stopService(){
@@ -75,6 +83,8 @@ public class WebService extends Service {
         }
         Notification.HTTP_SERVER.cancel();
         Logger.inf("Web server stopped.");
+        receivers.forEach(this::unregisterReceiver);
+        receivers.clear();
         WebService.instance = null;
         super.onDestroy();
     }

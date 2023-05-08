@@ -12,16 +12,16 @@ import java.util.zip.CRC32;
 
 public class UserTable implements Table {
     private final LibreLinkDatabase db;
+    private UserRow[] rows;
 
     public UserTable(LibreLinkDatabase db) {
         this.db = db;
+        this.rows = this.queryRows();
     }
 
     public int getLastStoredUserId(){
-        UserRow[] rows = this.queryRows();
-        return rows[rows.length - 1].getUserId();
+        return (rows.length != 0) ? rows[rows.length - 1].getUserId() : 0;
     }
-
 
     @Override
     public String getName() {
@@ -32,12 +32,17 @@ public class UserTable implements Table {
     public UserRow[] queryRows() {
         List<UserRow> rowList = new ArrayList<>();
 
-        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        int rowLength = Table.getRowLength(db.getSQLite(), this);
         for(int rowIndex = 0; rowIndex < rowLength; rowIndex++){
             rowList.add(new UserRow(this, rowIndex));
         }
 
         return rowList.toArray(new UserRow[0]);
+    }
+
+    @Override
+    public void rowInserted() {
+        this.rows = this.queryRows();
     }
 
     @Override

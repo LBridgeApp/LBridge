@@ -3,11 +3,8 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
 import android.content.ContentValues;
 import android.database.Cursor;
 
-import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.HistoricReadingTable;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
-import com.oop1.GlucoseUnit;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -20,8 +17,11 @@ public class HistoricReadingRow implements Row {
 
     public HistoricReadingRow(final HistoricReadingTable table, int rowIndex) {
         this.table = table;
-        String query = String.format("SELECT * FROM %s WHERE _rowid_=%s", table.getName(), rowIndex);
+
+        String query = Row.getBaseRowSearchingSQL(table);
         Cursor cursor = table.getDatabase().getSQLite().rawQuery(query, null);
+        cursor.moveToPosition(rowIndex); // перемещаемся на строку с индексом rowIndex
+
         this.glucoseValue = cursor.getDouble(cursor.getColumnIndexOrThrow(RowColumns.glucoseValue));
         this.sampleNumber = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.sampleNumber));
         this.readingId = cursor.getInt(cursor.getColumnIndexOrThrow(RowColumns.readingId));
@@ -31,6 +31,7 @@ public class HistoricReadingRow implements Row {
         this.timestampLocal = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.timestampLocal));
         this.timestampUTC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.timestampUTC));
         this.CRC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.CRC));
+
         cursor.close();
     }
 
@@ -43,8 +44,9 @@ public class HistoricReadingRow implements Row {
                               final String timeZone,
                               final long timestampLocal,
                               final long timestampUTC
-    ) throws IOException {
+    ) {
         this.table = table;
+
         this.glucoseValue = glucoseValue;
         this.readingId = table.getLastStoredReadingId() + 1;
         this.sampleNumber = sampleNumber;
@@ -53,10 +55,10 @@ public class HistoricReadingRow implements Row {
         this.timeZone = timeZone;
         this.timestampLocal = timestampLocal;
         this.timestampUTC = timestampUTC;
-        this.CRC = this.computeCRC32();
     }
 
-    public void insertOrThrow() {
+    @Override
+    public void insertOrThrow() throws IOException {
 
         ContentValues values = new ContentValues();
         values.put(RowColumns.glucoseValue, glucoseValue);
@@ -67,9 +69,10 @@ public class HistoricReadingRow implements Row {
         values.put(RowColumns.timeZone, timeZone);
         values.put(RowColumns.timestampUTC, timestampUTC);
         values.put(RowColumns.timestampLocal, timestampLocal);
-        values.put(RowColumns.CRC, CRC);
+        values.put(RowColumns.CRC, this.computeCRC32());
 
         table.getDatabase().getSQLite().insertOrThrow(table.getName(), null, values);
+        table.rowInserted();
     }
 
     public long computeCRC32() throws IOException {
@@ -93,7 +96,10 @@ public class HistoricReadingRow implements Row {
     public int getSampleNumber() {
         return sampleNumber;
     }
-    public int getReadingId(){ return readingId; }
+
+    public int getReadingId() {
+        return readingId;
+    }
 
     private final double glucoseValue;
     private final int readingId;
@@ -103,7 +109,7 @@ public class HistoricReadingRow implements Row {
     private final String timeZone;
     private final long timestampLocal;
     private final long timestampUTC;
-    private final long CRC;
+    private long CRC;
 
     private static class RowColumns {
         final static String glucoseValue = "glucoseValue";

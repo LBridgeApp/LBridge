@@ -30,6 +30,7 @@ public class PeriodicTimer extends BroadcastReceiver {
         pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
         IntentFilter filter = new IntentFilter("com.example.nfc_libre_scan.librelink.timerReceiver");
         context.registerReceiver(this, filter);
+        context.addBroadcastReceiver(this);
     }
 
     protected void start() {

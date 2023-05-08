@@ -3,7 +3,6 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
 import android.content.ContentValues;
 import android.database.Cursor;
 
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.RawScanTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
 
@@ -14,12 +13,12 @@ import java.util.zip.CRC32;
 
 public class RawScanRow implements Row {
     private final RawScanTable table;
-
     public RawScanRow(final RawScanTable table,
                       final int rowIndex){
         this.table = table;
-        String query = String.format("SELECT * FROM %s WHERE _rowid_=%s", table.getName(), rowIndex);
+        String query = Row.getBaseRowSearchingSQL(table);
         Cursor cursor = table.getDatabase().getSQLite().rawQuery(query, null);
+        cursor.moveToPosition(rowIndex); // перемещаемся на строку с индексом rowIndex
 
         this.patchInfo = cursor.getBlob(cursor.getColumnIndexOrThrow(RowColumns.patchInfo));
         this.payload = cursor.getBlob(cursor.getColumnIndexOrThrow(RowColumns.payload));
@@ -29,6 +28,7 @@ public class RawScanRow implements Row {
         this.timestampLocal = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.timestampLocal));
         this.timestampUTC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.timestampUTC));
         this.CRC = cursor.getLong(cursor.getColumnIndexOrThrow(RowColumns.CRC));
+
         cursor.close();
     }
 
@@ -38,8 +38,9 @@ public class RawScanRow implements Row {
                       final int sensorId,
                       final String timeZone,
                       final long timestampLocal,
-                      final long timestampUTC) throws IOException {
+                      final long timestampUTC) {
         this.table = table;
+
         this.patchInfo = patchInfo;
         this.payload = payload;
         this.scanId = table.getLastStoredScanId() + 1;
@@ -47,10 +48,10 @@ public class RawScanRow implements Row {
         this.timeZone = timeZone;
         this.timestampLocal = timestampLocal;
         this.timestampUTC = timestampUTC;
-        this.CRC = this.computeCRC32();
     }
 
-    public void insertOrThrow() {
+    @Override
+    public void insertOrThrow() throws IOException {
 
         ContentValues values = new ContentValues();
         values.put(RowColumns.patchInfo, patchInfo);
@@ -60,9 +61,10 @@ public class RawScanRow implements Row {
         values.put(RowColumns.timeZone, timeZone);
         values.put(RowColumns.timestampLocal, timestampLocal);
         values.put(RowColumns.timestampUTC, timestampUTC);
-        values.put(RowColumns.CRC, CRC);
+        values.put(RowColumns.CRC, this.computeCRC32());
 
         table.getDatabase().getSQLite().insertOrThrow(table.getName(), null, values);
+        table.rowInserted();
     }
 
     public long computeCRC32() throws IOException {
@@ -91,7 +93,7 @@ public class RawScanRow implements Row {
     private final String timeZone;
     private final long timestampLocal;
     private final long timestampUTC;
-    private final long CRC;
+    private long CRC;
 
     private static class RowColumns {
         static final String patchInfo = "patchInfo";

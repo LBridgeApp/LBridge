@@ -1,24 +1,19 @@
 package com.example.nfc_libre_scan.librelink.librelink_sas_db;
 
-import android.content.ContentValues;
-
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.HistoricReadingRow;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.RealTimeReadingRow;
 import com.oop1.GlucoseUnit;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.CRC32;
 
 public class RealTimeReadingTable implements Table {
     private final LibreLinkDatabase db;
+    private RealTimeReadingRow[] rows;
     public RealTimeReadingTable(LibreLinkDatabase db) {
         this.db = db;
+        this.rows = this.queryRows();
     }
 
     public void addLastSensorScan(LibreMessage libreMessage) throws Exception {
@@ -26,7 +21,7 @@ public class RealTimeReadingTable implements Table {
         double glucoseValue = libreMessage.getCurrentBg().convertBG(GlucoseUnit.MGDL).getBG();
         boolean isActionable = true;
         double rateOfChange = 0.0;
-        int sensorId = db.getSensorTable().getLastStoredSensorId();
+        int sensorId = db.getSensorTable().getLastSensorId();
         long timeChangeBefore = 0;
         String timeZone = libreMessage.getCurrentBg().getTimeZone();
         long timestampLocal = Utils.withoutNanos(libreMessage.getCurrentBg().getTimestampLocal());
@@ -48,7 +43,7 @@ public class RealTimeReadingTable implements Table {
     public RealTimeReadingRow[] queryRows() {
         List<RealTimeReadingRow> rowList = new ArrayList<>();
 
-        int rowLength = SqlUtils.getRowLength(db.getSQLite(), this);
+        int rowLength = Table.getRowLength(db.getSQLite(), this);
         for(int rowIndex = 0; rowIndex < rowLength; rowIndex++){
             rowList.add(new RealTimeReadingRow(this, rowIndex));
         }
@@ -56,13 +51,17 @@ public class RealTimeReadingTable implements Table {
         return rowList.toArray(new RealTimeReadingRow[0]);
     }
 
+    @Override
+    public void rowInserted() {
+        this.rows = this.queryRows();
+    }
+
     public int getLastStoredReadingId(){
-        RealTimeReadingRow[] rows = this.queryRows();
-        return rows[rows.length - 1].getReadingId();
+        return (rows.length != 0) ? rows[rows.length - 1].getReadingId() : 0;
     }
 
     @Override
     public LibreLinkDatabase getDatabase() {
-        return null;
+        return db;
     }
 }
