@@ -1,7 +1,8 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.RealTimeReadingRow;
 import com.oop1.GlucoseUnit;
 

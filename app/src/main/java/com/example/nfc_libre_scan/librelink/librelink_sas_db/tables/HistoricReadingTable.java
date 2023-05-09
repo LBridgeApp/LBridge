@@ -1,7 +1,8 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.HistoricReadingRow;
 import com.oop1.GlucoseUnit;
 import com.oop1.HistoricBg;
@@ -42,6 +43,7 @@ public class HistoricReadingTable implements Table {
         double glucoseValue = historicBg.convertBG(GlucoseUnit.MGDL).getBG();
         int sampleNumber = historicBg.getSampleNumber();
         int sensorId = db.getSensorTable().getLastSensorId();
+        // TODO: Непонятно, когда timeChangeBefore может быть не равен нулю.
         int timeChangeBefore = 0;
         String timeZone = historicBg.getTimeZone();
         long timestampLocal = Utils.withoutNanos(historicBg.getTimestampLocal());

@@ -1,6 +1,6 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 
-import com.example.nfc_libre_scan.libre.LibreMessage;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
 
@@ -13,7 +13,7 @@ public class SensorSelectionRangeTable implements Table {
     private final LibreLinkDatabase db;
     private SensorSelectionRangeRow[] rows;
 
-    SensorSelectionRangeTable(LibreLinkDatabase db) {
+    public SensorSelectionRangeTable(LibreLinkDatabase db) {
         this.db = db;
         this.rows = this.queryRows();
     }

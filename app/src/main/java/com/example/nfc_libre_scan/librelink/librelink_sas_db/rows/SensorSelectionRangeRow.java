@@ -4,8 +4,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteStatement;
 
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.SensorSelectionRangeTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.SensorSelectionRangeTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

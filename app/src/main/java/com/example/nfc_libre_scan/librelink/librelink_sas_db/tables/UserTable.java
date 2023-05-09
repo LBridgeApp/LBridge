@@ -1,14 +1,10 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.UserRow;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.CRC32;
 
 public class UserTable implements Table {
     private final LibreLinkDatabase db;

@@ -71,7 +71,11 @@ public class LogActivity extends AppCompatActivity implements View.OnClickListen
     @Override
     public void onClick(View v) {
         if(v.getId() == R.id.removeLogsDb){
-            Logger.recreateLogDb();
+            try {
+                Logger.recreateLogTable();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             this.initView();
         }
         else if(v.getId() == R.id.clearLogWindowBtn){

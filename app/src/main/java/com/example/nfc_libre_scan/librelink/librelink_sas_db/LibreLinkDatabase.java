@@ -7,6 +7,12 @@ import com.example.nfc_libre_scan.App;
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink.LibreLink;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.HistoricReadingTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.RawScanTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.RealTimeReadingTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.SensorSelectionRangeTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.SensorTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.UserTable;
 
 public class LibreLinkDatabase {
     private static final String APOLLO_DB = "apollo.db";
@@ -24,6 +30,8 @@ public class LibreLinkDatabase {
     public LibreLinkDatabase(Context context, LibreLink librelink) {
         this.context = context;
         this.librelink = librelink;
+
+        // TODO: добавить валидацию времени и CRC
     }
 
     public void patchWithLastScan() throws Exception {
@@ -74,7 +82,7 @@ public class LibreLinkDatabase {
         return db;
     }
 
-    protected LibreMessage getLibreMessage(){
+    public LibreMessage getLibreMessage(){
         return librelink.getLibreMessage();
     }
 
@@ -90,15 +98,15 @@ public class LibreLinkDatabase {
         return realTimeReadingTable;
     }
 
-    protected SensorSelectionRangeTable getSensorSelectionRangeTable(){
+    public SensorSelectionRangeTable getSensorSelectionRangeTable(){
         return sensorSelectionRangeTable;
     }
 
-    protected SensorTable getSensorTable(){
+    public SensorTable getSensorTable(){
         return sensorTable;
     }
 
-    protected UserTable getUserTable(){
+    public UserTable getUserTable(){
         return userTable;
     }
 
@@ -223,6 +231,7 @@ public class LibreLinkDatabase {
             }
         }
     }
+
     @FunctionalInterface
     private interface ThrowingRunnable {
         void run() throws Throwable;

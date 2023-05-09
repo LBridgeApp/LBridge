@@ -1,4 +1,6 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
+
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.Table;
 
 import java.io.IOException;
 

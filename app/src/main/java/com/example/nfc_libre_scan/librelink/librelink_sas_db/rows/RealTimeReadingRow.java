@@ -4,8 +4,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 
 import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.RealTimeReadingTable;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.RealTimeReadingTable;
 import com.oop1.GlucoseUnit;
 
 import java.io.ByteArrayOutputStream;

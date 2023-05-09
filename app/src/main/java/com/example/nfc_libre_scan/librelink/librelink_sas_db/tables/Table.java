@@ -1,16 +1,10 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.example.nfc_libre_scan.libre.LibreMessage;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentSkipListMap;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.Row;
 
 public interface Table {
     String getName();

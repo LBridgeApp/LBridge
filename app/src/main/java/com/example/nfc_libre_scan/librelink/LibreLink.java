@@ -188,7 +188,7 @@ public class LibreLink implements LibreMessageListener {
         this.copySasDatabaseToUs();
         LibreLinkDatabase libreLinkDatabase = new LibreLinkDatabase(this.context, this);
         libreLinkDatabase.endLastSensor();
-        Logger.ok("Current sensor has ended in librelink db.");
+        Logger.ok("Last sensor has ended in librelink db.");
         this.copySasDatabaseFromUs();
     }
 }

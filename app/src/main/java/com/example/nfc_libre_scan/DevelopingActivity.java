@@ -63,7 +63,7 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
         }
         else if(v.getId() == R.id.end_last_sensor_btn){
             try {
-                endCurrentSensor();
+                endLastSensor();
             } catch (Exception e) {
                 Logger.error(e);
             }
@@ -98,14 +98,13 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
         libreLink.setFakeSerialNumberForLastSensor();
     }
 
-    private void endCurrentSensor() throws Exception {
+    private void endLastSensor() throws Exception {
         LibreLink libreLink = new LibreLink(this);
         libreLink.endLastSensor();
     }
 
     private void removeSensorAliases() throws Exception {
-        RootLib rootLib = new RootLib(this);
-        rootLib.removeFile(this.getDatabasePath("sensorAliases.db").getAbsolutePath());
+        App.getInstance().getAppDatabase().recreateSensorAliasTable();
         Logger.ok("Sensor aliases removed.");
     }
 

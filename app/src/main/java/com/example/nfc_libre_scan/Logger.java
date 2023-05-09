@@ -4,7 +4,6 @@ import static com.example.nfc_libre_scan.App.TAG;
 
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.util.Log;
 
@@ -17,14 +16,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Logger {
-    private final SQLiteDatabase db;
+    private final AppDatabase appDatabase;
 
-    private Logger() {
-        this.db = SQLiteDatabase.openOrCreateDatabase(App.getInstance().getApplicationContext().getDatabasePath("logs.db").getAbsolutePath(), null);
-        this.createLogTable();
+    private Logger() throws Exception {
+        this.appDatabase = App.getInstance().getAppDatabase();
     }
 
-    private static final Logger instance = new Logger();
+    private static final Logger instance;
+
+    static {
+        try {
+            instance = new Logger();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static final List<LogListener> logListeners = new ArrayList<>();
     private static final DateTimeFormatter dbTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
 
@@ -105,18 +112,16 @@ public class Logger {
 
     private void writeToDatabase(LocalDateTime utc, String status, String message) {
         try {
-            db.beginTransaction();
-            ContentValues values = new ContentValues();
-            values.put(TableStrings.dateTimeUTC, utc.format(dbTimeFormatter));
-            values.put(TableStrings.status, status);
-            values.put(TableStrings.message, message);
-            db.insertOrThrow(TableStrings.TABLE_NAME, null, values);
-            db.setTransactionSuccessful();
-        } catch (Exception e) {
-            e.printStackTrace();
+            App.getInstance().getAppDatabase().execInTransaction(() -> {
+                ContentValues values = new ContentValues();
+                values.put(TableStrings.dateTimeUTC, utc.format(dbTimeFormatter));
+                values.put(TableStrings.status, status);
+                values.put(TableStrings.message, message);
+                appDatabase.getSQLite().insertOrThrow(TableStrings.TABLE_NAME, null, values);
+            });
         }
-        finally {
-            db.endTransaction();
+        catch (Exception e){
+            e.printStackTrace();
         }
     }
 
@@ -130,7 +135,7 @@ public class Logger {
                     TableStrings.status, TableStrings.message,
                     TableStrings.TABLE_NAME,
                     TableStrings.id, minId, maxId);
-            cursor = instance.db.rawQuery(sql, null);
+            cursor = instance.appDatabase.getSQLite().rawQuery(sql, null);
             while (cursor.moveToNext()) {
                 int idIndex = cursor.getColumnIndex(TableStrings.id);
                 int statusIndex = cursor.getColumnIndex(TableStrings.status);
@@ -160,7 +165,7 @@ public class Logger {
     }
 
     public static int getLogRecordCount() {
-        Cursor cursor = instance.db.rawQuery(String.format("SELECT COUNT(*) FROM %s", TableStrings.TABLE_NAME), null);
+        Cursor cursor = instance.appDatabase.getSQLite().rawQuery(String.format("SELECT COUNT(*) FROM %s", TableStrings.TABLE_NAME), null);
         int count = 0;
         if (cursor.moveToFirst()) {
             count = cursor.getInt(0);
@@ -169,18 +174,8 @@ public class Logger {
         return count;
     }
 
-    public static void recreateLogDb() {
-        instance.recreateLogTable();
-    }
-
-    private void createLogTable() {
-        this.db.execSQL(String.format("CREATE TABLE IF NOT EXISTS %s (%s INTEGER PRIMARY KEY AUTOINCREMENT, %s DATETIME, %s TEXT, %s TEXT);)",
-                TableStrings.TABLE_NAME, TableStrings.id, TableStrings.dateTimeUTC, TableStrings.status, TableStrings.message));
-    }
-
-    private void recreateLogTable() {
-        this.db.execSQL(String.format("DROP TABLE IF EXISTS %s", TableStrings.TABLE_NAME));
-        this.createLogTable();
+    public static void recreateLogTable() throws Exception {
+        instance.appDatabase.recreateLogTable();
     }
 
     static class LogRecord {

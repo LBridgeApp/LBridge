@@ -1,19 +1,15 @@
-package com.example.nfc_libre_scan.librelink.librelink_sas_db;
+package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteStatement;
-
-import androidx.annotation.NonNull;
 
 import com.example.nfc_libre_scan.App;
+import com.example.nfc_libre_scan.AppDatabase;
 import com.example.nfc_libre_scan.Logger;
 import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.libre.PatchUID;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
-
-import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -26,13 +22,13 @@ import java.util.List;
 public class SensorTable implements Table {
 
     private final LibreLinkDatabase db;
-    private SQLiteDatabase sensorAliasesDb;
+    private final AppDatabase appDatabase;
     private SensorRow[] rows;
 
     public SensorTable(LibreLinkDatabase db) {
         this.db = db;
+        this.appDatabase = App.getInstance().getAppDatabase();
         this.rows = this.queryRows();
-        this.createSensorAliasTable();
     }
 
     public void updateToLastScan(LibreMessage libreMessage) throws Exception {
@@ -271,22 +267,9 @@ public class SensorTable implements Table {
         // с предложением отсканировать новый сенсор.
     }
 
-    private void createSensorAliasTable() {
-        this.sensorAliasesDb = SQLiteDatabase.openOrCreateDatabase(App.getInstance().getApplicationContext()
-                .getDatabasePath("sensorAliases.db"), null);
-        try {
-            sensorAliasesDb.beginTransaction();
-            sensorAliasesDb.execSQL("CREATE TABLE IF NOT EXISTS sensorAliases (originalLibreSN TEXT NOT NULL, fakeSN TEXT NOT NULL, UNIQUE (`originalLibreSN`), UNIQUE (`fakeSN`));");
-            sensorAliasesDb.setTransactionSuccessful();
-            Logger.ok("Sensor alias table exists or created.");
-        } finally {
-            this.sensorAliasesDb.endTransaction();
-        }
-    }
-
     private String getSensorAlias(String originalLibreSN) {
         String sql = "SELECT fakeSN FROM sensorAliases WHERE originalLibreSN = ?";
-        Cursor cursor = this.sensorAliasesDb.rawQuery(sql, new String[]{originalLibreSN});
+        Cursor cursor = App.getInstance().getAppDatabase().getSQLite().rawQuery(sql, new String[]{originalLibreSN});
         String aliasSN = null;
         if (cursor.moveToFirst()) {
             aliasSN = cursor.getString(0);
@@ -296,30 +279,12 @@ public class SensorTable implements Table {
         return aliasSN;
     }
 
-    private void setSensorAlias(String originalLibreSN, String sensorAlias) {
-        try {
-            this.sensorAliasesDb.beginTransaction();
-            String query = "SELECT COUNT(*) FROM sensorAliases WHERE originalLibreSN = ?";
-            SQLiteStatement statement = sensorAliasesDb.compileStatement(query);
-            statement.bindString(1, originalLibreSN);
-            long count = statement.simpleQueryForLong();
-
-            if (count == 0) {
-                // originalLibreSN отсутствует, создаем новую запись
-                sensorAliasesDb.execSQL("INSERT INTO sensorAliases (originalLibreSN, fakeSN) VALUES (?, ?);",
+    private void setSensorAlias(String originalLibreSN, String sensorAlias) throws Exception {
+            appDatabase.execInTransaction(() -> {
+                appDatabase.getSQLite().execSQL("INSERT OR REPLACE INTO sensorAliases (originalLibreSN, fakeSN) VALUES (?, ?);",
                         new String[]{originalLibreSN, sensorAlias});
-                Logger.ok(String.format("Created alias for sensor serial number %s, alias is %s", originalLibreSN, sensorAlias));
-            } else {
-                // originalLibreSN существует, обновляем запись
-                sensorAliasesDb.execSQL("UPDATE sensorAliases SET fakeSN = ? WHERE originalLibreSN = ?;",
-                        new String[]{sensorAlias, originalLibreSN});
-                Logger.ok(String.format("Updated alias for sensor serial number %s, new alias is %s", originalLibreSN, sensorAlias));
-            }
-
-            sensorAliasesDb.setTransactionSuccessful();
-        } finally {
-            sensorAliasesDb.endTransaction();
-        }
+            });
+            Logger.ok(String.format("Set alias for sensor serial number %s, alias is %s", originalLibreSN, sensorAlias));
     }
 
     @Override

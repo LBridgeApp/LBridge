@@ -3,8 +3,7 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db.rows;
 import android.content.ContentValues;
 import android.database.Cursor;
 
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.RawScanTable;
-import com.example.nfc_libre_scan.librelink.librelink_sas_db.Row;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.RawScanTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
