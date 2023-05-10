@@ -99,12 +99,8 @@ public class WebService extends Service {
     }
 
     private int getSavedOrFindFreePort() throws Exception {
-        int port;
-        try {
-            port = readSavedPort();
-        }
-        catch (Exception e){
-            Logger.error(e);
+        int port = readSavedPort();
+        if(port == -1){
             port = generateRandomPort();
         }
 
@@ -134,20 +130,22 @@ public class WebService extends Service {
         }
     }
 
-    private int readSavedPort() throws Exception {
-        Cursor cursor = appDatabase.getSQLite().rawQuery("SELECT name FROM options WHERE name='serverPort'", null);
+    private int readSavedPort() {
+        Cursor cursor = appDatabase.getSQLite().rawQuery("SELECT value FROM options WHERE name='serverPort'", null);
         boolean recordExists = cursor.moveToPosition(0); // перемещаем курсор на строку с индексом 0;
 
         if(!recordExists){
             cursor.close();
-            throw new Exception("No server port record found.");
+            Logger.warn("Server port record does not exists.");
+            return -1;
         }
 
         int port = cursor.getInt(0); // порт находится в колонке с индексом 0
         cursor.close();
 
         if(port < this.MIN_PORT || port > this.MAX_PORT){
-            throw new Exception(String.format("Port %s is not valid.", port));
+            Logger.warn(String.format("Port %s is not valid.", port));
+            return -1;
         }
         return port;
     }
