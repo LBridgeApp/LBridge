@@ -212,8 +212,13 @@ public class Logger {
         }
 
         public String toShortString() {
-            return String.format("[%s] [%s] %s", this.getDateTimeLocal().format(DateTimeFormatter.ofPattern("HH:mm")),
-                    this.getStatus(), this.getMessage().split("\n")[0]);
+            String[] messageLines = this.getMessage().split("\n");
+
+            String shortString = String.format("[%s] [%s] %s", this.getDateTimeLocal().format(DateTimeFormatter.ofPattern("HH:mm")),
+                    this.getStatus(), messageLines[0]);
+
+            if(messageLines.length > 1) { shortString += String.format(" ... %s more.", messageLines.length - 1); }
+            return shortString;
         }
 
         public String toFullString(){

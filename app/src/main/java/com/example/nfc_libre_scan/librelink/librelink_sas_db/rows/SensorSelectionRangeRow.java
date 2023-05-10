@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-public class SensorSelectionRangeRow implements Row {
+public class SensorSelectionRangeRow implements Row, TimeRow {
     private final SensorSelectionRangeTable table;
     private final List<SQLiteStatement> sqlChangingList = new ArrayList<>();
 
@@ -113,6 +113,16 @@ public class SensorSelectionRangeRow implements Row {
     private final int sensorId;
     private final long startTimestampUTC;
     private long CRC;
+
+    @Override
+    public long getBiggestTimestampUTC() {
+        if(endTimestampUTC == Long.MAX_VALUE){
+            return startTimestampUTC;
+        }
+        else {
+            return Math.max(startTimestampUTC, endTimestampUTC);
+        }
+    }
 
     private static class RowColumns {
         final static String endTimestampUTC = "endTimestampUTC";

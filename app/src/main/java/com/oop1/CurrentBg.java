@@ -5,6 +5,7 @@ import com.example.nfc_libre_scan.Utils;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.TimeZone;
 
@@ -55,7 +56,7 @@ public class CurrentBg {
     public ZonedDateTime getSensorTimeAsUTC(){
         //oOPResults.timestamp + (historicBg.time - oOPResults.currentTime) * 60000;
         return Instant.ofEpochMilli(this.scanUnixTimestamp)
-                .atZone(ZoneId.of("UTC"));
+                .atZone(ZoneOffset.UTC);
     }
 
     public ZonedDateTime getSensorTimeAsLocalTime(){

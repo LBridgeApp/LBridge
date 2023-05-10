@@ -3,12 +3,13 @@ package com.example.nfc_libre_scan.librelink.librelink_sas_db.tables;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorRow;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.rows.TimeRow;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class SensorSelectionRangeTable implements Table {
+public class SensorSelectionRangeTable implements Table, TimeTable {
 
     private final LibreLinkDatabase db;
     private SensorSelectionRangeRow[] rows;
@@ -92,5 +93,15 @@ public class SensorSelectionRangeTable implements Table {
     @Override
     public LibreLinkDatabase getDatabase() {
         return db;
+    }
+
+    @Override
+    public long getBiggestTimestampUTC() {
+        long biggestTimestamp = 0;
+
+        for(TimeRow row : rows){
+            biggestTimestamp = Math.max(biggestTimestamp, row.getBiggestTimestampUTC());
+        }
+        return biggestTimestamp;
     }
 }

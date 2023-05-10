@@ -12,7 +12,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class RealTimeReadingRow implements Row {
+public class RealTimeReadingRow implements Row, TimeRow, ScanTimeRow {
     private final RealTimeReadingTable table;
 
     public RealTimeReadingRow(final RealTimeReadingTable table,
@@ -142,6 +142,16 @@ public class RealTimeReadingRow implements Row {
     private final long timestampUTC;
     private final int trendArrow;
     private long CRC;
+
+    @Override
+    public long getBiggestTimestampUTC() {
+        return this.timestampUTC;
+    }
+
+    @Override
+    public long getScanTimestampUTC() {
+        return this.timestampUTC;
+    }
 
     private static class RowColumns {
         final static String alarm = "alarm";

@@ -10,6 +10,11 @@ import com.oop1.LibreSavedState;
 import com.oop1.OOPResults;
 
 public class LibreMessage {
+    private final long scanTimestampUTC;
+
+    public long getScanTimestampUTC(){
+        return this.scanTimestampUTC;
+    }
 
     private final RawLibreData rawLibreData;
 
@@ -60,7 +65,8 @@ public class LibreMessage {
         String libreSN = PatchUID.decodeSerialNumber(patchUID);
         OOPResults oopResults = AlgorithmRunner.RunAlgorithm(context, rawLibreData, libreSN, false);
         LibreSavedState libreSavedState = oopResults.getLibreSavedState();
-        return new LibreMessage(rawLibreData, libreSavedState, libreSN, oopResults);
+        long scanTimestampUTC = oopResults.getCurrentBg().getTimestampUTC();
+        return new LibreMessage(rawLibreData, libreSavedState, libreSN, oopResults, scanTimestampUTC);
 
     }
 
@@ -68,7 +74,12 @@ public class LibreMessage {
         this.lockFromAddingToDB(LibreMessage.MessageLockingStatus.MESSAGE_ALREADY_ADDED_TO_DB);
     }
 
-    private LibreMessage(RawLibreData rawLibreData, LibreSavedState libreSavedState, String libreSN, OOPResults oopResults) throws Exception {
+    private LibreMessage(RawLibreData rawLibreData,
+                         LibreSavedState libreSavedState,
+                         String libreSN,
+                         OOPResults oopResults,
+                         long scanTimestampUTC) throws Exception {
+        this.scanTimestampUTC = scanTimestampUTC;
         this.rawLibreData = rawLibreData;
         this.libreSavedState = libreSavedState;
         this.libreSN = libreSN;

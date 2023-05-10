@@ -10,7 +10,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class RawScanRow implements Row {
+public class RawScanRow implements Row, TimeRow, ScanTimeRow {
     private final RawScanTable table;
     public RawScanRow(final RawScanTable table,
                       final int rowIndex){
@@ -93,6 +93,16 @@ public class RawScanRow implements Row {
     private final long timestampLocal;
     private final long timestampUTC;
     private long CRC;
+
+    @Override
+    public long getBiggestTimestampUTC() {
+        return this.timestampUTC;
+    }
+
+    @Override
+    public long getScanTimestampUTC() {
+        return this.timestampUTC;
+    }
 
     private static class RowColumns {
         static final String patchInfo = "patchInfo";

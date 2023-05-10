@@ -15,6 +15,11 @@ public class Utils {
         return local.atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
+    public static LocalDateTime unixUTCToTimeUTC(long timestampUTC){
+        return Instant.ofEpochMilli(timestampUTC)
+                .atZone(ZoneOffset.UTC).toLocalDateTime();
+    }
+
     public static long withoutNanos(long timestamp){
         // некоторые поля оканчиваются на 000, поэтому наносекунды убираются.
         Instant instant = Instant.ofEpochMilli(timestamp);

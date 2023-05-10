@@ -5,19 +5,28 @@ import android.database.sqlite.SQLiteDatabase;
 
 import com.example.nfc_libre_scan.App;
 import com.example.nfc_libre_scan.Logger;
+import com.example.nfc_libre_scan.Utils;
 import com.example.nfc_libre_scan.libre.LibreMessage;
 import com.example.nfc_libre_scan.librelink.LibreLink;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.HistoricReadingTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.RawScanTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.RealTimeReadingTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.ScanTimeTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.SensorSelectionRangeTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.SensorTable;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.Table;
+import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.TimeTable;
 import com.example.nfc_libre_scan.librelink.librelink_sas_db.tables.UserTable;
+
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 
 public class LibreLinkDatabase {
     private static final String APOLLO_DB = "apollo.db";
     private static final String SAS_DB = "sas.db";
     private SQLiteDatabase db;
+    private Table[] tables;
     private HistoricReadingTable historicReadingTable;
     private RawScanTable rawScanTable;
     private RealTimeReadingTable realTimeReadingTable;
@@ -31,24 +40,70 @@ public class LibreLinkDatabase {
         this.context = context;
         this.librelink = librelink;
 
-        // TODO: добавить валидацию времени и CRC
+        // TODO: добавить валидацию CRC
     }
 
     public void patchWithLastScan() throws Exception {
-        performAction(() -> {
+        this.open();
+
+        LibreMessage libreMessage = this.getLibreMessage();
+        long messageTimestamp = libreMessage.getScanTimestampUTC();
+        long biggestTimestamp = this.getBiggestTimestampUTC();
+        String messagePersonTime = (Utils.unixUTCToTimeUTC(messageTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+        String biggestPersonTime = (Utils.unixUTCToTimeUTC(biggestTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+
+        // Если сообщение пришло с временем меньше, чем максимальное время в базе данных
+        if(messageTimestamp < biggestTimestamp){
+            String errorMsg = String.format("Invalid libreMessage UTC timestamp.\n" +
+                    "LibreMessage timestamp: %s (UTC). Biggest time in db: %s (UTC)",
+                    messagePersonTime, biggestPersonTime);
+            throw new Exception(errorMsg);
+        }
+
+        long biggestScanTimestamp = this.getBiggestScanTimestampUTC();
+
+        Duration duration = Duration.between(Utils.unixUTCToTimeUTC(biggestScanTimestamp), Utils.unixUTCToTimeUTC(messageTimestamp));
+        if(duration.toMinutes() < 60){
+            throw new Exception("Last scan was less 60 minutes ago.");
+        }
+
+        execInTransaction(() -> {
             sensorTable.updateToLastScan(librelink.getLibreMessage());
             rawScanTable.addLastSensorScan(librelink.getLibreMessage());
             realTimeReadingTable.addLastSensorScan(librelink.getLibreMessage());
             historicReadingTable.addLastSensorScan(librelink.getLibreMessage());
         });
+
+        db.close();
     }
 
+    public long getBiggestScanTimestampUTC(){
+        return Arrays.stream(tables)
+                .filter(table -> table instanceof ScanTimeTable)
+                .mapToLong(table -> ((ScanTimeTable) table).getBiggestScanTimestampUTC())
+                .max()
+                .orElse(0L);
+    }
+
+    public long getBiggestTimestampUTC() {
+        return Arrays.stream(tables)
+                .filter(table -> table instanceof TimeTable)
+                .mapToLong(table -> ((TimeTable) table).getBiggestTimestampUTC())
+                .max()
+                .orElse(0L);
+    }
+
+
     public void setFakeSerialNumberForLastSensor() throws Exception {
-        performAction(() -> sensorTable.setFakeSerialNumberForLastSensor());
+        this.open();
+        execInTransaction(() -> sensorTable.setFakeSerialNumberForLastSensor());
+        db.close();
     }
 
     public void endLastSensor() throws Exception {
-        performAction(() -> sensorTable.endLastSensor());
+        this.open();
+        execInTransaction(() -> sensorTable.endLastSensor());
+        db.close();
     }
 
     private void open() {
@@ -60,10 +115,18 @@ public class LibreLinkDatabase {
         sensorSelectionRangeTable = new SensorSelectionRangeTable(this);
         sensorTable = new SensorTable(this);
         userTable = new UserTable(this);
+
+        tables = new Table[]{
+                historicReadingTable,
+                rawScanTable,
+                realTimeReadingTable,
+                sensorSelectionRangeTable,
+                sensorTable,
+                userTable
+        };
     }
-    private void performAction(ThrowingRunnable action) throws Exception {
+    private void execInTransaction(ThrowingRunnable action) throws Exception {
         try {
-            this.open();
             db.beginTransaction();
             action.run();
             db.setTransactionSuccessful();
@@ -74,7 +137,6 @@ public class LibreLinkDatabase {
         }
         finally {
             db.endTransaction();
-            db.close();
         }
     }
 
@@ -111,7 +173,10 @@ public class LibreLinkDatabase {
     }
 
     public void createDatabasesInOurApp() throws Exception {
-        // TODO: проверить это
+        // Этот метод создаёт две базы данных - sas.db и apollo.db за приложение LibreLink.
+        // Это необходимо для работы нашего приложения в виртуальной машине Android,
+        // если найдется способ заставить работать LibreLink в VM.
+
         try (SQLiteDatabase apollo = SQLiteDatabase.openOrCreateDatabase(App.getInstance().getApplicationContext().getDatabasePath(APOLLO_DB).getAbsolutePath(), null)) {
 
             apollo.beginTransaction();

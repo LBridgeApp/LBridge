@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-public class SensorRow implements Row {
+public class SensorRow implements Row, TimeRow, ScanTimeRow {
     private final SensorTable table;
     private final List<SQLiteStatement> sqlChangingList = new ArrayList<>();
 
@@ -383,6 +383,16 @@ public class SensorRow implements Row {
     private final int warmupPeriodInMinutes;
     private final int wearDurationInMinutes;
     private long CRC;
+
+    @Override
+    public long getBiggestTimestampUTC() {
+        return Math.max(this.lastScanTimestampUTC, sensorStartTimestampUTC);
+    }
+
+    @Override
+    public long getScanTimestampUTC() {
+        return this.lastScanTimestampUTC;
+    }
 
     private static class RowColumns {
         final static String attenuationState = "attenuationState";
