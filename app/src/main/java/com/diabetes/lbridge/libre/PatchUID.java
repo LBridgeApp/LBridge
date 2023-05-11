@@ -106,21 +106,23 @@ public class PatchUID {
     }
 
     public static byte[] generateFake(){
-        // TODO: подумать, может не стоит писать сюда определенные 2-ые байты. Могут вычислить покупателя сенсоров.
-        // я сравнил серийные номера сенсоров
-        // вычислил байты, которые не отличаются,
-        // которые повторяются несколько раз,
-        // которые встречаются только один раз.
+        // я сравнил серийные номера сенсоров на площадках продаж.
+        // вычислил байты, которые не отличаются и которые меняются.
+
+        final byte[] zeroBytes = new byte[]{ 96, -95, 92, 76, -25, 12, -40, 78, 15, -45, 30, -115, -57, -124, 74, 106, 33, 77, -34, 105, 42, -116, -46, -107 };
+        final byte[] firstBytes = new byte[]{ -64, 66, 32, -25, -92, -109, -61, -95, 52, 57, 119, 90, 65, -57, 110, 69, -105, -54, 56, -24, 20, 115, 100, -119, 29 };
+        final byte[] secondBytes = new byte[]{ 77, 24, 73, -72, 87, -104, 94, 97, 28, 88, -5, 9, 99, 23, 39, 84, -81, 68, -84, 31 };
+        final byte[] thirdBytes = new byte[]{ 10, 11 };
 
         SecureRandom random = new SecureRandom();
         byte[] patchUID = new byte[8];
 
-        patchUID[0] = (byte) random.nextInt(256);
-        patchUID[1] = (byte) random.nextInt(256);
-        byte[] secondBytes = new byte[]{ 80, -80, 112, 99 };
+        patchUID[0] = zeroBytes[random.nextInt(zeroBytes.length)];
+        patchUID[1] = firstBytes[random.nextInt(firstBytes.length)];
         patchUID[2] = secondBytes[random.nextInt(secondBytes.length)];
+        patchUID[3] = thirdBytes[random.nextInt(thirdBytes.length)];
+
         // постоянные байты
-        patchUID[3] = 0x0b;
         patchUID[4] = 0x00;
         patchUID[5] = (byte) 0xa0;
         patchUID[6] = 0x07;
