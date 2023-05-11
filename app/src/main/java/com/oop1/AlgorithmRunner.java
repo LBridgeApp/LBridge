@@ -14,7 +14,7 @@ import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessi
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingOutputs;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.DataProcessingResult;
 import com.abbottdiabetescare.flashglucose.sensorabstractionservice.dataprocessing.GlucoseValue;
-import com.example.nfc_libre_scan.libre.RawLibreData;
+import com.diabetes.lbridge.libre.RawLibreData;
 
 import java.util.Arrays;
 import java.util.Objects;

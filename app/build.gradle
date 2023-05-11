@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    namespace 'com.example.nfc_libre_scan'
+    namespace 'com.diabetes.lbridge'
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.example.nfc_libre_scan"
-        minSdk 31
+        applicationId 'com.diabetes.lbridge'
+        minSdk 26
         targetSdk 33
         versionCode 1
         versionName "1.0"
