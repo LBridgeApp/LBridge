@@ -7,6 +7,8 @@ import com.diabetes.lbridge.App;
 import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.Utils;
 import com.diabetes.lbridge.librelink.LibreLink;
+import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
+import com.diabetes.lbridge.librelink.librelink_sas_db.tables.CrcTable;
 import com.diabetes.lbridge.librelink.librelink_sas_db.tables.RawScanTable;
 import com.diabetes.lbridge.librelink.librelink_sas_db.tables.RealTimeReadingTable;
 import com.diabetes.lbridge.librelink.librelink_sas_db.tables.SensorTable;
@@ -39,8 +41,6 @@ public class LibreLinkDatabase {
     public LibreLinkDatabase(Context context, LibreLink librelink) {
         this.context = context;
         this.librelink = librelink;
-
-        // TODO: добавить валидацию CRC
     }
 
     public void patchWithLastScan() throws Exception {
@@ -77,7 +77,7 @@ public class LibreLinkDatabase {
         db.close();
     }
 
-    public long getBiggestScanTimestampUTC(){
+    private long getBiggestScanTimestampUTC(){
         return Arrays.stream(tables)
                 .filter(table -> table instanceof ScanTimeTable)
                 .mapToLong(table -> ((ScanTimeTable) table).getBiggestScanTimestampUTC())
@@ -85,7 +85,7 @@ public class LibreLinkDatabase {
                 .orElse(0L);
     }
 
-    public long getBiggestTimestampUTC() {
+    private long getBiggestTimestampUTC() {
         return Arrays.stream(tables)
                 .filter(table -> table instanceof TimeTable)
                 .mapToLong(table -> ((TimeTable) table).getBiggestTimestampUTC())
@@ -93,6 +93,15 @@ public class LibreLinkDatabase {
                 .orElse(0L);
     }
 
+    private void validateCRC() throws Exception {
+        CrcTable[] crcTables = Arrays.stream(tables)
+                .filter(table -> table instanceof CrcTable)
+                .toArray(CrcTable[]::new);
+
+        for (CrcTable table : crcTables) {
+            table.validateCRC();
+        }
+    }
 
     public void setFakeSerialNumberForLastSensor() throws Exception {
         this.open();
@@ -126,9 +135,11 @@ public class LibreLinkDatabase {
         };
     }
     private void execInTransaction(ThrowingRunnable action) throws Exception {
+        this.validateCRC();
         try {
             db.beginTransaction();
             action.run();
+            this.validateCRC();
             db.setTransactionSuccessful();
         }
         catch (Throwable e){

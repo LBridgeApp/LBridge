@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-public class SensorRow implements Row, TimeRow, ScanTimeRow {
+public class SensorRow implements Row, TimeRow, ScanTimeRow, CrcRow {
     private final SensorTable table;
     private final List<SQLiteStatement> sqlChangingList = new ArrayList<>();
 
@@ -392,6 +392,12 @@ public class SensorRow implements Row, TimeRow, ScanTimeRow {
     @Override
     public long getScanTimestampUTC() {
         return this.lastScanTimestampUTC;
+    }
+    @Override
+    public void validateCRC() throws Exception {
+        if(this.CRC != this.computeCRC32()){
+            throw new Exception("CRC is not valid.");
+        }
     }
 
     private static class RowColumns {

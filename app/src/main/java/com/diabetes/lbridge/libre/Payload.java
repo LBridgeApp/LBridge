@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 public class Payload {
+    public static final int payloadBytesLength = 344;
 
     private Payload(){}
 
@@ -23,7 +24,6 @@ public class Payload {
     public static long getSensorStartTimestampUTC(long scanUnixTimestamp, byte[] payload){
         // TODO: не совпадают значения, если сравнить значения sensorStartTimestampUTC
         // в оригинальной таблице и значение, которое выдает этот метод.
-        // оригинальное значение примерно на 3 часа больше.
         int sensorTimeInMinutes = Payload.getSensorTimeInMinutes(payload);
         Instant scanTimestampAsInstant = Instant.ofEpochMilli(scanUnixTimestamp);
         LocalDateTime scanTimeStampAsDateTime = LocalDateTime.ofInstant(scanTimestampAsInstant, ZoneOffset.UTC);
@@ -38,8 +38,6 @@ public class Payload {
     public static byte getSensorStatus(byte[] payload){
         return payload[4];
     }
-
-    public static final int payloadBytesLength = 344;
 
     public static boolean verify(byte[] payload){
         // Continue for libre1,2 checks

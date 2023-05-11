@@ -115,8 +115,8 @@ public class PatchUID {
         SecureRandom random = new SecureRandom();
         byte[] patchUID = new byte[8];
 
-        patchUID[0] = (byte) (Byte.MIN_VALUE + random.nextInt((Byte.MAX_VALUE + 1) * 2));
-        patchUID[1] = (byte) (Byte.MIN_VALUE + random.nextInt((Byte.MAX_VALUE + 1) * 2));
+        patchUID[0] = (byte) random.nextInt(256);
+        patchUID[1] = (byte) random.nextInt(256);
         byte[] secondBytes = new byte[]{ 80, -80, 112, 99 };
         patchUID[2] = secondBytes[random.nextInt(secondBytes.length)];
         // постоянные байты

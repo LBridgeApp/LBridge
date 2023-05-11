@@ -1,6 +1,7 @@
 package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
 
 import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.SensorRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.SensorSelectionRangeRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.TimeRow;
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class SensorSelectionRangeTable implements Table, TimeTable {
+public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
 
     private final LibreLinkDatabase db;
     private SensorSelectionRangeRow[] rows;
@@ -103,5 +104,12 @@ public class SensorSelectionRangeTable implements Table, TimeTable {
             biggestTimestamp = Math.max(biggestTimestamp, row.getBiggestTimestampUTC());
         }
         return biggestTimestamp;
+    }
+
+    @Override
+    public void validateCRC() throws Exception {
+        for(CrcRow row : rows){
+            row.validateCRC();
+        }
     }
 }

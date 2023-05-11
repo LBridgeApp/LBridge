@@ -3,6 +3,7 @@ package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
 import com.diabetes.lbridge.Utils;
 import com.diabetes.lbridge.libre.LibreMessage;
 import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.RealTimeReadingRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.ScanTimeRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.TimeRow;
@@ -11,7 +12,7 @@ import com.oop1.GlucoseUnit;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RealTimeReadingTable implements Table, TimeTable, ScanTimeTable {
+public class RealTimeReadingTable implements Table, TimeTable, ScanTimeTable, CrcRow {
     private final LibreLinkDatabase db;
     private RealTimeReadingRow[] rows;
     public RealTimeReadingTable(LibreLinkDatabase db) {
@@ -25,6 +26,7 @@ public class RealTimeReadingTable implements Table, TimeTable, ScanTimeTable {
         boolean isActionable = true;
         double rateOfChange = 0.0;
         int sensorId = db.getSensorTable().getLastSensorId();
+        // TODO: Непонятно, когда timeChangeBefore может быть не равен нулю.
         long timeChangeBefore = 0;
         String timeZone = libreMessage.getCurrentBg().getTimeZone();
         long timestampLocal = Utils.withoutNanos(libreMessage.getCurrentBg().getTimestampLocal());
@@ -86,5 +88,12 @@ public class RealTimeReadingTable implements Table, TimeTable, ScanTimeTable {
             biggestScanTimestamp = Math.max(biggestScanTimestamp, row.getScanTimestampUTC());
         }
         return biggestScanTimestamp;
+    }
+
+    @Override
+    public void validateCRC() throws Exception {
+        for(CrcRow row : rows){
+            row.validateCRC();
+        }
     }
 }

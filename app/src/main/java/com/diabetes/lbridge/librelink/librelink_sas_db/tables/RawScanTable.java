@@ -2,6 +2,7 @@ package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
 
 import com.diabetes.lbridge.libre.LibreMessage;
 import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.RawScanRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.ScanTimeRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.TimeRow;
@@ -9,7 +10,7 @@ import com.diabetes.lbridge.librelink.librelink_sas_db.rows.TimeRow;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RawScanTable implements Table, TimeTable, ScanTimeTable {
+public class RawScanTable implements Table, TimeTable, ScanTimeTable, CrcTable {
     private final LibreLinkDatabase db;
     private RawScanRow[] rows;
 
@@ -81,5 +82,12 @@ public class RawScanTable implements Table, TimeTable, ScanTimeTable {
             biggestScanTimestamp = Math.max(biggestScanTimestamp, row.getScanTimestampUTC());
         }
         return biggestScanTimestamp;
+    }
+
+    @Override
+    public void validateCRC() throws Exception {
+        for(CrcRow row : rows){
+            row.validateCRC();
+        }
     }
 }

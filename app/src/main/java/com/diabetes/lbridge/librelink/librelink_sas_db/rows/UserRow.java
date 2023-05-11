@@ -10,7 +10,7 @@ import java.io.DataOutputStream;
 
 import java.util.zip.CRC32;
 
-public class UserRow implements Row {
+public class UserRow implements Row, CrcRow {
     private final UserTable table;
 
     public UserRow(final UserTable table,
@@ -66,8 +66,14 @@ public class UserRow implements Row {
     private final String name;
     private final int userId;
     private long CRC;
+    @Override
+    public void validateCRC() throws Exception {
+        if(this.CRC != this.computeCRC32()){
+            throw new Exception("CRC is not valid.");
+        }
+    }
 
-private static class RowColumns {
+    private static class RowColumns {
     final static String name = "name";
     final static String userId = "userId";
     final static String CRC = "CRC";

@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 
-public class SensorSelectionRangeRow implements Row, TimeRow {
+public class SensorSelectionRangeRow implements Row, TimeRow, CrcRow {
     private final SensorSelectionRangeTable table;
     private final List<SQLiteStatement> sqlChangingList = new ArrayList<>();
 
@@ -120,6 +120,13 @@ public class SensorSelectionRangeRow implements Row, TimeRow {
         }
         else {
             return Math.max(startTimestampUTC, endTimestampUTC);
+        }
+    }
+
+    @Override
+    public void validateCRC() throws Exception {
+        if(this.CRC != this.computeCRC32()){
+            throw new Exception("CRC is not valid.");
         }
     }
 

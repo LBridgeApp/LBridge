@@ -1,12 +1,13 @@
 package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
 
 import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.UserRow;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class UserTable implements Table {
+public class UserTable implements Table, CrcTable {
     private final LibreLinkDatabase db;
     private UserRow[] rows;
 
@@ -44,5 +45,12 @@ public class UserTable implements Table {
     @Override
     public LibreLinkDatabase getDatabase() {
         return db;
+    }
+
+    @Override
+    public void validateCRC() throws Exception {
+        for(CrcRow row : rows){
+            row.validateCRC();
+        }
     }
 }

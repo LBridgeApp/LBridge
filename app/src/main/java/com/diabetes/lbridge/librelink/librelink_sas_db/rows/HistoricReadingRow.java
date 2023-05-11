@@ -9,7 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.util.zip.CRC32;
 
-public class HistoricReadingRow implements Row, TimeRow, ScanTimeRow {
+public class HistoricReadingRow implements Row, TimeRow, ScanTimeRow, CrcRow {
 
     private final HistoricReadingTable table;
 
@@ -117,6 +117,13 @@ public class HistoricReadingRow implements Row, TimeRow, ScanTimeRow {
     @Override
     public long getScanTimestampUTC() {
         return this.timestampUTC;
+    }
+
+    @Override
+    public void validateCRC() throws Exception {
+        if(this.CRC != this.computeCRC32()){
+            throw new Exception("CRC is not valid.");
+        }
     }
 
     private static class RowColumns {
