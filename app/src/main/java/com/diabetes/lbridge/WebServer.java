@@ -84,11 +84,13 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
                 session.parseBody(map);
                 final String json = map.get("postData");
 
+                Logger.inf("Handling new LibreMessage from xDrip...");
+
                 final RawLibreData rawLibreData = new Gson().fromJson(json, RawLibreData.class);
 
                 final LibreMessage libreMessage = LibreMessage.getInstance(context, rawLibreData);
 
-                Logger.ok("LibreMessage received from server.");
+                Logger.inf("LibreMessage from xDrip is valid.");
 
                 listener.libreMessageReceived(libreMessage);
                 return this.OK();

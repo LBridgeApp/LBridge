@@ -75,7 +75,7 @@ public class PeriodicTimer extends BroadcastReceiver {
 
         Logger.inf(String.format("Next task scheduled at %s", nextLocalString));
 
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }
 
     private enum TaskStatus {

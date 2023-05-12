@@ -28,7 +28,7 @@ public class AlgorithmRunner {
         final byte[] patchUid = rawLibreData.getPatchUID();
         final byte[] patchInfo = rawLibreData.getPatchInfo();
         final byte[] payload = rawLibreData.getPayload();
-        final long timestamp = rawLibreData.getTimestamp();
+        final long timestamp = rawLibreData.getTimestampUTC();
 
         LibreSavedState libreSavedState;
         DataProcessingNative data_processing_native = new DataProcessingNative(1095774808);

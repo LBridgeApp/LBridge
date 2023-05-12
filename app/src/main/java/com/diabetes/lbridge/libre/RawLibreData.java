@@ -21,7 +21,7 @@ public class RawLibreData {
 
     private final long timestamp;
 
-    public long getTimestamp() {
+    public long getTimestampUTC() {
         /*
         * Несмотря на то, что UTC последнего сканирования
         * принимается от клиента, тем не менее, разница во времени
@@ -33,24 +33,47 @@ public class RawLibreData {
         return timestamp;
     }
 
-    public RawLibreData(byte[] patchUID, byte[] patchInfo, byte[] payload, long timestamp) throws Exception {
+    public RawLibreData(byte[] patchUID, byte[] patchInfo, byte[] payload, long timestampUTC) throws Exception {
         this.patchUID = patchUID;
         this.patchInfo = patchInfo;
         this.payload = payload;
-        this.timestamp = timestamp;
+        this.timestamp = timestampUTC;
         // Этот класс для gson, который не вызывает явно конструктор класса.
         // Поэтому здесь нет смысла бросать исключение.
         // Экземпляр объекта проверяется классом LibreMessage
     }
 
-    public boolean verify() {
-        return (patchUID != null && patchUID.length == 8
-                && patchInfo != null && patchInfo.length == 6
-                && Payload.verify(payload)
-                && timestamp > 0);
+    public void validate() throws Exception {
+        boolean patchUidValid = patchUID != null && patchUID.length == 8;
+        boolean patchInfoValid = patchInfo != null && patchInfo.length == 6;
+        boolean payloadValid = payload != null && Payload.verify(payload);
+        boolean timestampUtcValid = timestamp > 0;
+
+        if(!patchUidValid){
+            throw new Exception(String.format("PatchUID is not valid.\n" +
+                    "His length: %s",
+                    (patchUID == null) ? 0 : patchUID.length));
+        }
+
+        if(!patchInfoValid){
+            throw new Exception(String.format("PatchInfo is not valid.\n" +
+                            "His length: %s",
+                    (patchInfo == null) ? 0 : patchInfo.length));
+        }
+
+        if(!payloadValid){
+            throw new Exception(String.format("Payload is not valid.\n" +
+                            "His length: %s",
+                    (payload == null) ? 0 : payload.length));
+        }
+
+        if(!timestampUtcValid){
+            throw new Exception(String.format("Timestamp is not valid.\n" +
+                            "His value: %s", timestamp));
+        }
     }
 
-    public static boolean verify(RawLibreData rawLibreData) {
-        return rawLibreData != null && rawLibreData.verify();
-    }
+    /*public static boolean validate(RawLibreData rawLibreData) {
+        return rawLibreData != null && rawLibreData.validate();
+    }*/
 }

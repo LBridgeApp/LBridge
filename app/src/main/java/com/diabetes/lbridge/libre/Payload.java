@@ -16,21 +16,18 @@ public class Payload {
         return 256 * (payload[317] & 0xFF) + (payload[316] & 0xFF);
     }
 
-    public static long getSensorStartTimestampLocal(long scanUnixTimestamp, byte[] payload){
-        long timestampUTC = Payload.getSensorStartTimestampUTC(scanUnixTimestamp, payload);
-        return Utils.withoutNanos(Utils.unixAsLocal(timestampUTC));
+    public static long getSensorStartTimestampLocal(long scanUnixTimestampUTC, byte[] payload){
+        long timestampUTC = Payload.getSensorStartTimestampUTC(scanUnixTimestampUTC, payload);
+        return Utils.unixAsLocal(timestampUTC);
     }
 
-    public static long getSensorStartTimestampUTC(long scanUnixTimestamp, byte[] payload){
-        // TODO: не совпадают значения, если сравнить значения sensorStartTimestampUTC
-        // в оригинальной таблице и значение, которое выдает этот метод.
+    public static long getSensorStartTimestampUTC(long scanUnixTimestampUTC, byte[] payload){
+        // Этот метод выдает лишь приблизительное время старта сенсора с точностью несколько часов.
         int sensorTimeInMinutes = Payload.getSensorTimeInMinutes(payload);
-        Instant scanTimestampAsInstant = Instant.ofEpochMilli(scanUnixTimestamp);
+        Instant scanTimestampAsInstant = Instant.ofEpochMilli(scanUnixTimestampUTC);
         LocalDateTime scanTimeStampAsDateTime = LocalDateTime.ofInstant(scanTimestampAsInstant, ZoneOffset.UTC);
         return scanTimeStampAsDateTime
                 .minusMinutes(sensorTimeInMinutes)
-                // поле startTimestamp оканчиваются на 000, поэтому наносекунды убираются.
-                .withNano(0)
                 .toInstant(ZoneOffset.UTC)
                 .toEpochMilli();
     }

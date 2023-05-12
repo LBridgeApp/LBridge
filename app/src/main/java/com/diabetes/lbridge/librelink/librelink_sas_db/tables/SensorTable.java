@@ -242,9 +242,9 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
         Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
         long sensorExpirationTimestamp = endInstant.toEpochMilli();
 
-        long currentTimestamp = System.currentTimeMillis();
+        long scanUnixTimestamp = this.getDatabase().getLibreMessage().getScanTimestampUTC();
 
-        return currentTimestamp >= sensorExpirationTimestamp || endedEarly;
+        return scanUnixTimestamp >= sensorExpirationTimestamp || endedEarly;
     }
 
     private boolean isSensorExists(String libreSN) throws Exception {

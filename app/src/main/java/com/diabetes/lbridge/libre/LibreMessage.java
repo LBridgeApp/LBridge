@@ -10,13 +10,11 @@ import com.oop1.LibreSavedState;
 import com.oop1.OOPResults;
 
 public class LibreMessage {
-    private final long scanTimestampUTC;
+    private final RawLibreData rawLibreData;
 
     public long getScanTimestampUTC(){
-        return this.scanTimestampUTC;
+        return this.getRawLibreData().getTimestampUTC();
     }
-
-    private final RawLibreData rawLibreData;
 
     public RawLibreData getRawLibreData() {
         return rawLibreData;
@@ -65,9 +63,7 @@ public class LibreMessage {
         String libreSN = PatchUID.decodeSerialNumber(patchUID);
         OOPResults oopResults = AlgorithmRunner.RunAlgorithm(context, rawLibreData, libreSN, false);
         LibreSavedState libreSavedState = oopResults.getLibreSavedState();
-        long scanTimestampUTC = oopResults.getCurrentBg().getTimestampUTC();
-        return new LibreMessage(rawLibreData, libreSavedState, libreSN, oopResults, scanTimestampUTC);
-
+        return new LibreMessage(rawLibreData, libreSavedState, libreSN, oopResults);
     }
 
     public void onAddedToDatabase() {
@@ -77,9 +73,7 @@ public class LibreMessage {
     private LibreMessage(RawLibreData rawLibreData,
                          LibreSavedState libreSavedState,
                          String libreSN,
-                         OOPResults oopResults,
-                         long scanTimestampUTC) throws Exception {
-        this.scanTimestampUTC = scanTimestampUTC;
+                         OOPResults oopResults) throws Exception {
         this.rawLibreData = rawLibreData;
         this.libreSavedState = libreSavedState;
         this.libreSN = libreSN;
@@ -127,21 +121,38 @@ public class LibreMessage {
 
 
     private void validateMessage() throws Exception {
-        if (!RawLibreData.verify(rawLibreData)
-                || libreSavedState == null
-                || libreSN == null
-                || libreSN.length() != 11
-                || currentBg == null
-                || historicBgs == null
-                || currentBg.convertBG(GlucoseUnit.MMOL).getBG() == 0.0) {
-            throw new Exception("LibreMessage is not valid.");
+        rawLibreData.validate();
+
+        if(libreSavedState == null){
+            throw new Exception("LibreSavedState is null");
+        }
+
+        if(libreSN == null){
+            throw new Exception("LibreSN is null");
+        }
+
+        if(libreSN.length() != 11){
+            throw new Exception(String.format("LibreMessage length != 11.\n" +
+                    "His length: %s. His value: %s", libreSN.length(), libreSN));
+        }
+
+        if(currentBg == null){
+            throw new Exception("currentBg is null");
+        }
+
+        if(historicBgs == null){
+            throw new Exception("HistoricBgs is null");
+        }
+
+        if(currentBg.convertBG(GlucoseUnit.MMOL).getBG() == 0.0){
+            throw new Exception("Glucose value is 0.0");
         }
     }
 
     public long getSensorStartTimestampLocal(){
-        return Payload.getSensorStartTimestampLocal(this.getRawLibreData().getTimestamp(), this.getRawLibreData().getPayload());
+        return Payload.getSensorStartTimestampLocal(this.getRawLibreData().getTimestampUTC(), this.getRawLibreData().getPayload());
     }
     public long getSensorStartTimestampUTC(){
-        return Payload.getSensorStartTimestampUTC(this.getRawLibreData().getTimestamp(), this.getRawLibreData().getPayload());
+        return Payload.getSensorStartTimestampUTC(this.getRawLibreData().getTimestampUTC(), this.getRawLibreData().getPayload());
     }
 }

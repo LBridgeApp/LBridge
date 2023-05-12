@@ -12,6 +12,7 @@ import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.LibreMessageProvider;
 import com.diabetes.lbridge.Vibrator;
 
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -53,8 +54,8 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
             byte[] patchUID = this.queryPatchUID();
             byte[] patchInfo = this.queryPatchInfo();
             byte[] payload = this.queryPayload();
-            long timestamp = System.currentTimeMillis();
-            RawLibreData rawLibreData = new RawLibreData(patchUID, patchInfo, payload, timestamp);
+            long timestampUTC = System.currentTimeMillis();
+            RawLibreData rawLibreData = new RawLibreData(patchUID, patchInfo, payload, timestampUTC);
             LibreMessage libreMessage = LibreMessage.getInstance(activity, rawLibreData);
             listeners.forEach(l -> l.libreMessageReceived(libreMessage));
             Vibrator.SCAN_SUCCESS.vibrate(activity);
