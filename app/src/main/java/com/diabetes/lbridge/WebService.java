@@ -20,7 +20,6 @@ public class WebService extends Service {
     private final List<BroadcastReceiver> receivers = new ArrayList<>();
     private static WebService instance = null;
     private AppDatabase appDatabase;
-
     private final int MIN_PORT = 1024;
     private final int MAX_PORT = 65535;
     @Override
@@ -34,9 +33,9 @@ public class WebService extends Service {
         if (WebService.instance == null) {
             Intent intent = new Intent(context, WebService.class);
             context.startForegroundService(intent);
-            Logger.ok("WebService started");
+            Logger.ok("web-service started");
         } else {
-            Logger.warn("WebService already running.");
+            Logger.warn("web-service already running.");
         }
     }
 
@@ -47,10 +46,9 @@ public class WebService extends Service {
     public static void stopService(){
         if(instance != null){
             instance.stopSelf();
-            Logger.ok("WebService stopped.");
         }
         else {
-            Logger.warn("WebService already is not exists.");
+            Logger.warn("web-service already is not exists.");
         }
     }
 
@@ -62,20 +60,18 @@ public class WebService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startForeground(Notification.HTTP_SERVER.getId(), Notification.HTTP_SERVER.getBuilder().build());
         try {
             int serverPort = getSavedOrFindFreePort();
             this.saveGeneratedPort(serverPort);
 
             server = new WebServer(this, null, serverPort);
             server.start();
-            Logger.ok("Web server started.");
             LibreLink libreLink = new LibreLink(this);
             libreLink.listenLibreMessages(server);
 
         } catch (Exception e) {
             Logger.error(e);
-            String errorMsg = String.format("IMPORTANT: SERVICE STOPPED!\n" +
+            String errorMsg = String.format("web-service stopped!\n" +
                     "See logs. Error msg:\n" +
                     "%s", e.getMessage());
             Notification.SERVICE_STOPPED.showOrUpdate(errorMsg);
@@ -89,8 +85,7 @@ public class WebService extends Service {
         if (server != null) {
             server.stop();
         }
-        Notification.HTTP_SERVER.cancel();
-        Logger.inf("Web server stopped.");
+        Logger.inf("web-service stopped.");
         receivers.forEach(this::unregisterReceiver);
         receivers.clear();
         WebService.instance = null;

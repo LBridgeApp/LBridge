@@ -305,6 +305,17 @@ public class SensorRow implements Row, TimeRow, ScanTimeRow, CrcRow {
         return this;
     }
 
+    public SensorRow setWearDurationInMinutes(int wearDurationInMinutes){
+        this.wearDurationInMinutes = wearDurationInMinutes;
+        SQLiteStatement statement = table.getDatabase().getSQLite()
+                .compileStatement(Row.getBaseUpdatingSQL(
+                        table, RowColumns.wearDurationInMinutes,
+                        RowColumns.sensorId, sensorId));
+        statement.bindLong(1, wearDurationInMinutes);
+        this.sqlChangingList.add(statement);
+        return this;
+    }
+
     public long computeCRC32() throws Exception {
         CRC32 crc32 = new CRC32();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -381,7 +392,7 @@ public class SensorRow implements Row, TimeRow, ScanTimeRow, CrcRow {
     private final long unrecordedRealTimeTimeChange;
     private final int userId;
     private final int warmupPeriodInMinutes;
-    private final int wearDurationInMinutes;
+    private int wearDurationInMinutes;
     private long CRC;
 
     @Override

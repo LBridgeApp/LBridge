@@ -1,0 +1,31 @@
+How to quickly import databases from apps:
+
+1) Create a new folder named 'Database' in the Desktop directory.
+2) Paste commands in PowerShell:
+
+sas.db from LibreLink:
+-------------------------------------------------------
+adb shell "su -c 'cp \
+/data/data/com.freestylelibre.app.ru/files/sas.db \
+/storage/emulated/0/Download/sas.db'; exit"; `
+adb pull /storage/emulated/0/Download/sas.db `
+$env:USERPROFILE\Desktop\Databases\sas.db
+-------------------------------------------------------
+
+apollo.db from LibreLink:
+-------------------------------------------------------
+adb shell "su -c 'cp \
+/data/data/com.freestylelibre.app.ru/files/apollo.db \
+/storage/emulated/0/Download/apollo.db'; exit"; `
+adb pull /storage/emulated/0/Download/apollo.db `
+$env:USERPROFILE\Desktop\Databases\apollo.db
+-------------------------------------------------------
+
+LBridge.db from LBridge:
+-------------------------------------------------------
+adb shell "su -c 'cp \
+/data/data/com.diabetes.lbridge/databases/LBridge.db \
+/storage/emulated/0/Download/LBridge.db'; exit"; `
+adb pull /storage/emulated/0/Download/LBridge.db `
+$env:USERPROFILE\Desktop\Databases\LBridge.db
+-------------------------------------------------------

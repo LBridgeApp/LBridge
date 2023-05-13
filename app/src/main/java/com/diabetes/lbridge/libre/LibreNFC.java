@@ -12,7 +12,6 @@ import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.LibreMessageProvider;
 import com.diabetes.lbridge.Vibrator;
 
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,7 +20,6 @@ public class LibreNFC implements NfcAdapter.ReaderCallback, LibreMessageProvider
     private final Activity activity;
     private NfcV nfcVTag;
     private final List<LibreMessageListener> listeners = new ArrayList<>();
-
     public LibreNFC(Activity activity) {
         this.activity = activity;
     }

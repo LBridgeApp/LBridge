@@ -6,7 +6,9 @@ import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.Utils;
 import com.diabetes.lbridge.App;
 import com.diabetes.lbridge.AppDatabase;
+import com.diabetes.lbridge.libre.LibreConfig;
 import com.diabetes.lbridge.libre.LibreMessage;
+import com.diabetes.lbridge.libre.LibreNFC;
 import com.diabetes.lbridge.libre.PatchUID;
 import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
@@ -85,6 +87,8 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
 
             this.setSensorAlias(originalLibreSN, fakeLibreSN);
 
+            // Когда мы стартуем новый сенсор,
+            // надо закончить сенсор в SensorSelectionRangeTable.
             db.getSensorSelectionRangeTable().endSensor(expiredAlias);
 
             this.createNewSensorRecord(libreMessage, fakeLibreSN, fakePatchUID);
@@ -128,8 +132,12 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
         int unrecordedHistoricTimeChange = 0;
         int unrecordedRealTimeTimeChange = 0;
         int userId = db.getUserTable().getLastStoredUserId();
-        int warmupPeriodInMinutes = 60;
-        int wearDurationInMinutes = 20160;
+        int warmupPeriodInMinutes = LibreConfig.WARMUP_MINUTES;
+
+        // Вместо официальных 14.0 дней пишем 14.5,
+        // чтобы была возможность отправлять
+        // последние 12 часов измерений в libreview.
+        int wearDurationInMinutes = LibreConfig.WEAR_DURATION_IN_MINUTES;
 
         SensorRow row = new SensorRow(this, attenuationState, bleAddress, compositeState,
                 enableStreamingTimestamp, endedEarly, initialPatchInformation,
@@ -176,6 +184,10 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
                 .setLastScanTimeZone(lastScanTimeZone)
                 .setLastScanTimestampLocal(lastScanTimestampLocal)
                 .setLastScanTimestampUTC(lastScanTimestampUTC)
+                // переписываем официальные 14.0 дней на 14.5,
+                // чтобы была возможность отправлять
+                // последние 12 часов измерений в libreview.
+                .setWearDurationInMinutes(LibreConfig.WEAR_DURATION_IN_MINUTES)
                 .replace();
     }
 
@@ -215,7 +227,8 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
                 .setEndedEarly(false)
                 .replace();
 
-        this.onSensorEnded();
+        // Здесь не нужно заканчивать сенсор
+        // в таблице SensorSelectionRanges.
     }
 
     public void endLastSensor() throws Exception {
@@ -239,7 +252,7 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
         boolean endedEarly = sensorRow.getEndedEarly();
 
         Instant startInstant = Instant.ofEpochMilli(sensorStartTimestampUTC);
-        Instant endInstant = startInstant.plus(14, ChronoUnit.DAYS);
+        Instant endInstant = startInstant.plus(LibreConfig.WEAR_DURATION_IN_MINUTES, ChronoUnit.MINUTES);
         long sensorExpirationTimestamp = endInstant.toEpochMilli();
 
         long scanUnixTimestamp = this.getDatabase().getLibreMessage().getScanTimestampUTC();
@@ -256,18 +269,6 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
                 .filter(row -> row.getSerialNumber().equals(libreSN))
                 .findFirst().orElse(null);
         return sensorRow != null;
-    }
-
-    private void onSensorEnded() {
-        // путем опытов пришел к выводу,
-        // что здесь не нужно заканчивать сенсор
-        // в таблице SensorSelectionRanges.
-        // На самом деле, так лучше,
-        // потому что в приложении будет надпись,
-        // что работа сенсора закончена.
-        // Если в SensorSelectionRanges сенсор закончить,
-        // то красная надпись пропадет, а будет просто желтая полоса
-        // с предложением отсканировать новый сенсор.
     }
 
     private String getSensorAlias(String originalLibreSN) {

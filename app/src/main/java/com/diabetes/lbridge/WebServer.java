@@ -19,10 +19,23 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 class WebServer extends NanoHTTPD implements LibreMessageProvider {
-    private final Context context;
+    private final WebService context;
     private LibreMessageListener listener;
     private final int serverPort;
+    private final NetworkCallback networkCallback;
     private final ConnectivityManager connectivityManager;
+
+    public WebServer(WebService context, String hostname, int port) {
+        super(hostname, port);
+        Logger.ok(String.format("web-server started on port %s", port));
+        context.startForeground(Notification.HTTP_SERVER.getId(), Notification.HTTP_SERVER.getBuilder().build());
+        this.serverPort = port;
+        this.context = context;
+        this.connectivityManager = context.getSystemService(ConnectivityManager.class);
+        this.networkCallback = new NetworkCallback(this);
+        this.showNotification();
+        this.setNetworkListener();
+    }
 
     private void showNotification() {
         String text = String.format("Server is working:\n" +
@@ -47,13 +60,12 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
         return "Not available";
     }
 
-    public WebServer(Context context, String hostname, int port) {
-        super(hostname, port);
-        this.serverPort = port;
-        this.context = context;
-        this.connectivityManager = context.getSystemService(ConnectivityManager.class);
-        this.showNotification();
-        this.setNetworkListener();
+    @Override
+    public void stop(){
+        connectivityManager.unregisterNetworkCallback(networkCallback);
+        Notification.HTTP_SERVER.cancel();
+        super.stop();
+        Logger.inf("web-server stopped.");
     }
 
     @Override
@@ -127,7 +139,7 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
                 new NetworkRequest.Builder()
                         .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                         .build();
-        connectivityManager.registerNetworkCallback(request, new NetworkCallback(this));
+        connectivityManager.registerNetworkCallback(request, networkCallback);
     }
 
     static class NetworkCallback extends ConnectivityManager.NetworkCallback {

@@ -21,6 +21,7 @@ public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
     }
 
     protected void endSensor(String libreSN) throws Exception {
+        // Сенсор здесь нужно заканчивать только при старте нового сенсора.
 
         SensorTable sensorTable = db.getSensorTable();
         SensorRow[] sensorRows = sensorTable.queryRows();
@@ -37,19 +38,9 @@ public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
         rangeRow.setEndTimestampUTC(System.currentTimeMillis()).replace();
     }
 
-    /*public void patchWithNewSensor(String oldSensorSN) throws Exception {
-        // а вот когда мы стартуем новый сенсор,
-        // вот тогда надо закончить сенсор здесь.
-        // см. private void onSensorEnded() класса SensorTable.
-        if (rows.length != 0) {
-            this.endSensor(oldSensorSN);
-        }
-        this.createNewSensorRecord(db.getLibreMessage());
-    }*/
-
     protected void createNewSensorRecord(long sensorStartTimestampUTC) throws Exception {
 
-        // В таблице LibreLink для действующего сенсора
+        // В таблице LibreLink для действующего и истекшего сенсора
         // значение конца времени действия равно
         // 9223372036854775807
         long endTimestampUTC = Long.MAX_VALUE;

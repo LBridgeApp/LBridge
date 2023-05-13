@@ -154,11 +154,11 @@ public enum Notification {
         }
 
         protected int getImportance() {
-            return NotificationManager.IMPORTANCE_NONE;
+            return NotificationManager.IMPORTANCE_DEFAULT;
         }
 
         protected int getPriority() {
-            return NotificationCompat.PRIORITY_MIN;
+            return NotificationCompat.PRIORITY_DEFAULT;
         }
 
         protected String getContentTitle() {

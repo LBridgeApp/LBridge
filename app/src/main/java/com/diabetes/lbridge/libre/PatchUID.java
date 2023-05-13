@@ -1,10 +1,5 @@
 package com.diabetes.lbridge.libre;
 
-import android.util.Log;
-
-import com.diabetes.lbridge.App;
-import com.diabetes.lbridge.Utils;
-
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
@@ -50,13 +45,10 @@ public class PatchUID {
     public static byte[] encodeSerialNumber(String serialNumber) {
         List<String> lookupTableAsList = Arrays.asList(lookupTable);
 
-        serialNumber = serialNumber.substring(1); // новая строка без первого символа "0"
-
-        Log.v(App.TAG, String.format("1. Serial number: %s%n", serialNumber));
+        // новая строка без первого символа "0"
+        serialNumber = serialNumber.substring(1);
 
         char[] symbols = serialNumber.toCharArray();
-
-        Log.v(App.TAG, String.format("2. Char array: %s%n", Arrays.toString(symbols)));
 
         StringBuilder binary = new StringBuilder();
         for(int i = 0; i < 10; i++){
@@ -81,9 +73,6 @@ public class PatchUID {
             uuidShort[i] = (byte) Integer.parseInt(eightBits, 2);
         }
 
-        Log.v(App.TAG, String.format("3. uuidShort: %s%n", Arrays.toString(uuidShort)));
-        Log.v(App.TAG, String.format("3. uuidShort: %s%n", Utils.byteArrayToHex(uuidShort)));
-
         byte[] serialBuffer = new byte[3 + 8];
         for (int i = 2; i < 8; i++) {
             serialBuffer[(2 + 8) - i] = uuidShort[i - 2];
@@ -92,15 +81,9 @@ public class PatchUID {
         serialBuffer[9] = 0x07;
         serialBuffer[10] = (byte) 0xe0;
 
-        Log.v(App.TAG, String.format("4. serialBuffer: %s%n", Arrays.toString(serialBuffer)));
-        Log.v(App.TAG, String.format("4. serialBuffer: %s%n", Utils.byteArrayToHex(serialBuffer)));
-
         byte[] patchUID = new byte[8];
 
         System.arraycopy(serialBuffer, 3, patchUID, 0, 8);
-
-        Log.v(App.TAG, String.format("5. PatchUID: %s%n", Arrays.toString(patchUID)));
-        Log.v(App.TAG, String.format("5. PatchUID: %s%n", Utils.byteArrayToHex(patchUID)));
 
         return patchUID;
     }

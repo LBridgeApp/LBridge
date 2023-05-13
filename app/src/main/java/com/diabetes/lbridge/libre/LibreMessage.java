@@ -44,7 +44,7 @@ public class LibreMessage {
         return historicBgs;
     }
 
-    public enum MessageLockingStatus {UNLOCKED, SENSOR_NOT_ACTIVATED, SENSOR_STARTING, SENSOR_EXPIRED, SENSOR_FAILURE, SENSOR_UNKNOWN_STATUS, MESSAGE_ALREADY_ADDED_TO_DB}
+    public enum MessageLockingStatus {UNLOCKED, SENSOR_NOT_YET_STARTED, SENSOR_STARTING, SENSOR_EXPIRED, SENSOR_FAILURE, SENSOR_UNKNOWN_STATUS, MESSAGE_ALREADY_ADDED_TO_DB}
 
     private MessageLockingStatus lockingStatus = MessageLockingStatus.UNLOCKED;
 
@@ -88,27 +88,27 @@ public class LibreMessage {
         final byte sensorStatus = Payload.getSensorStatus(this.getRawLibreData().getPayload());
         final double sensorTimeMinutes = Payload.getSensorTimeInMinutes(this.getRawLibreData().getPayload());
 
-        if (sensorTimeMinutes >= 60 * 24 * 14.0) {
+        if (sensorTimeMinutes >= LibreConfig.WEAR_DURATION_IN_MINUTES) {
             lockFromAddingToDB(MessageLockingStatus.SENSOR_EXPIRED);
             return;
         }
 
-        if (sensorTimeMinutes <= 60) {
+        if (sensorTimeMinutes <= LibreConfig.WARMUP_MINUTES) {
             lockFromAddingToDB(MessageLockingStatus.SENSOR_STARTING);
             return;
         }
 
         switch (sensorStatus) {
             case 0x01:
-                lockFromAddingToDB(MessageLockingStatus.SENSOR_NOT_ACTIVATED);
+                lockFromAddingToDB(MessageLockingStatus.SENSOR_NOT_YET_STARTED);
                 return;
             case 0x02:
                 lockFromAddingToDB(MessageLockingStatus.SENSOR_STARTING);
                 return;
-            case 0x03:
+            case 0x03: // status for 14 days and 12 h of normal operation, libre reader quits after 14 days
                 return;
-            case 0x04:
-            case 0x05:
+            case 0x04: // status of the following 12 h, sensor delivers last BG reading constantly
+            case 0x05: // sensor stops operation after 15d after start
                 lockFromAddingToDB(MessageLockingStatus.SENSOR_EXPIRED);
                 return;
             case 0x06:
