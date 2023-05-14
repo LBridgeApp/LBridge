@@ -1,6 +1,7 @@
 package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
 
 import android.database.Cursor;
+import android.util.Log;
 
 import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.Utils;
@@ -39,74 +40,88 @@ public class SensorTable implements Table, TimeTable, ScanTimeTable, CrcTable {
     public void updateToLastScan(LibreMessage libreMessage) throws Exception {
 
         String originalSN = libreMessage.getLibreSN();
-        String sensorAlias = getSensorAlias(libreMessage.getLibreSN());
+        String alias = getSensorAlias(libreMessage.getLibreSN());
 
-        Logger.inf(String.format("Original serial number: %s." + "Sensor alias: %s", originalSN, sensorAlias));
-
-        if (sensorAlias == null) {
-            Logger.inf(String.format("Sensor alias for sensor with serial number %s does not exists in our db. Adding...", libreMessage.getLibreSN()));
-            this.setSensorAlias(libreMessage.getLibreSN(), libreMessage.getLibreSN());
-            Logger.ok("Alias added");
+        if(alias == null){
+            Logger.inf(String.format("Any aliases for sensor %s does not exist.", originalSN));
+            this.setSensorAlias(originalSN, originalSN);
+            alias = getSensorAlias(originalSN);
         }
 
-        boolean isSensorAliasExists = isSensorExists(getSensorAlias(originalSN));
-        boolean isSensorAliasExpired = isSensorExpired(originalSN);
+        Logger.inf(String.format("Original serial number: %s. Sensor alias: %s", originalSN, alias));
+        Logger.inf(String.format("Alias is expired: %b", isSensorExpired(alias)));
 
-        if (!isSensorAliasExists) {
-            // если сенсор новый или всё-таки продленный, но отсутствует в базе.
-            String originalLibreSN = libreMessage.getLibreSN();
+        if(!isSensorExists(alias)){
+            Logger.inf(String.format("Alias %s for sensor %s does not exist.", alias, originalSN));
+        }
 
-            Logger.inf(String.format("Sensor with serial number %s and alias %s does not exists in db. " +
-                    "Creating new sensor record. Sensor alias is %s", originalLibreSN, originalLibreSN, originalLibreSN));
+        if(isSensorExpired(alias)){
+            Logger.inf(String.format("Alias %s for sensor %s expired.", alias, originalSN));
+        }
 
-            byte[] originalPatchUID = libreMessage.getRawLibreData().getPatchUID();
+        boolean newSensorRecordNeeded = !isSensorExists(alias) || isSensorExpired(alias);
+        boolean updateNeeded = isSensorExists(alias) && !isSensorExpired(alias);
 
-            this.setSensorAlias(originalLibreSN, originalLibreSN);
+        if(!newSensorRecordNeeded && !updateNeeded
+                || newSensorRecordNeeded && updateNeeded){
+            throw new Exception("UpdateToLastScan(): error in lbridge algorithm.");
+        }
 
-            this.createNewSensorRecord(libreMessage, originalLibreSN, originalPatchUID);
+        if(newSensorRecordNeeded){
+            String oldSensorAlias = alias;
+            Logger.inf("Creating new sensor record.");
+            boolean useOriginalIdentifiers = !isSensorExists(originalSN);
+
+            byte[] patchUID;
+            String serialNumber;
+
+            if(useOriginalIdentifiers) {
+                patchUID = libreMessage.getRawLibreData().getPatchUID();
+                serialNumber = originalSN;
+                this.setSensorAlias(originalSN, serialNumber);
+                alias = getSensorAlias(originalSN);
+                Logger.inf(String.format("Using original identifiers.\n" +
+                        "Serial number: %s.\n" +
+                        "Alias: %s", serialNumber, alias));
+            }
+            else {
+                patchUID = PatchUID.generateFake();
+                serialNumber = PatchUID.decodeSerialNumber(patchUID);;
+                this.setSensorAlias(originalSN, serialNumber);
+                alias = getSensorAlias(originalSN);
+                Logger.inf(String.format("Using fake identifiers.\n" +
+                        "Serial number: %s.\n" +
+                        "Alias: %s", serialNumber, alias));
+            }
+
+            if(isSensorExists(oldSensorAlias)) {
+                db.getSensorSelectionRangeTable().endSensor(oldSensorAlias);
+            }
+
+            this.createNewSensorRecord(libreMessage, serialNumber, patchUID);
 
             long sensorStartTimestampUTC = db.getLibreMessage().getSensorStartTimestampUTC();
             db.getSensorSelectionRangeTable().createNewSensorRecord(sensorStartTimestampUTC);
+            Logger.ok("New sensor record created.");
+        }
 
-            Logger.ok("New record added.");
-
-        } else if (isSensorAliasExpired) {
-            // если срок действия сенсора истёк
-
-            String originalLibreSN = libreMessage.getLibreSN();
-
-            String expiredAlias = getSensorAlias(originalLibreSN);
-
-            byte[] fakePatchUID = PatchUID.generateFake();
-
-            String fakeLibreSN = PatchUID.decodeSerialNumber(fakePatchUID);
-
-            Logger.inf(String.format("Sensor with serial number %s and alias %s expired in db. " +
-                            "Creating new sensor record with fake alias %s...",
-                    originalLibreSN, expiredAlias, fakeLibreSN));
-
-            this.setSensorAlias(originalLibreSN, fakeLibreSN);
-
-            // Когда мы стартуем новый сенсор,
-            // надо закончить сенсор в SensorSelectionRangeTable.
-            db.getSensorSelectionRangeTable().endSensor(expiredAlias);
-
-            this.createNewSensorRecord(libreMessage, fakeLibreSN, fakePatchUID);
-
-            long sensorStartTimestampUTC = db.getLibreMessage().getSensorStartTimestampUTC();
-            db.getSensorSelectionRangeTable().createNewSensorRecord(sensorStartTimestampUTC);
-
-            Logger.ok("New record added.");
-
-        } else {
-            String originalLibreSN = libreMessage.getLibreSN();
-            String alias = getSensorAlias(libreMessage.getLibreSN());
+        if(updateNeeded){
             Logger.inf(String.format("Updating sensor record with serial number %s and alias %s ...",
-                    originalLibreSN, alias));
+                    originalSN, alias));
 
             this.updateSensorRecord(libreMessage, alias);
+
             Logger.ok("Record updated.");
         }
+    }
+
+    protected SensorRow getSensorRow(String libreSN) throws Exception {
+        SensorTable sensorTable = db.getSensorTable();
+        SensorRow[] sensorRows = sensorTable.queryRows();
+        return Arrays.stream(sensorRows)
+                .filter(row -> row.getSerialNumber().equals(libreSN))
+                .findFirst()
+                .orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found in sensor table.", libreSN)));
     }
 
     private void createNewSensorRecord(LibreMessage libreMessage, String serialNumber, byte[] uniqueIdentifier) throws Exception {

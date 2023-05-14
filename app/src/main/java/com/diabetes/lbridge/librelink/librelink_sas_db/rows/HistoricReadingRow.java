@@ -119,6 +119,8 @@ public class HistoricReadingRow implements Row, TimeRow, ScanTimeRow, CrcRow {
         return this.timestampUTC;
     }
 
+    public int getSensorId(){ return this.sensorId; }
+
     @Override
     public void validateCRC() throws Exception {
         if(this.CRC != this.computeCRC32()){

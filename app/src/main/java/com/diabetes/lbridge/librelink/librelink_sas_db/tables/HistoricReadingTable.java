@@ -22,13 +22,15 @@ public class HistoricReadingTable implements Table, TimeTable, ScanTimeTable, Cr
         this.rows = this.queryRows();
     }
 
-    public int getLastStoredSampleNumber(){
-        return (rows.length != 0) ? rows[rows.length - 1].getSampleNumber() : 0;
+    public int getLastStoredSampleNumber(int sensorId){
+        HistoricReadingRow[] sensorIdRows = Arrays.stream(rows).filter(row -> row.getSensorId() == sensorId).toArray(HistoricReadingRow[]::new);
+        return (sensorIdRows.length != 0) ? sensorIdRows[sensorIdRows.length - 1].getSampleNumber() : 0;
     }
 
     public void addLastSensorScan(LibreMessage libreMessage) throws Exception {
 
-        final int lastStoredSampleNumber = getLastStoredSampleNumber();
+        int lastSensorId = db.getSensorTable().getLastSensorId();
+        final int lastStoredSampleNumber = getLastStoredSampleNumber(lastSensorId);
 
         HistoricBg[] missingHistoricBgs = Arrays.stream(libreMessage.getHistoricBgs())
                 .filter(bg -> bg.getSampleNumber() > lastStoredSampleNumber)

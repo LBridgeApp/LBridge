@@ -62,6 +62,7 @@ public class LibreLinkDatabase {
 
         long biggestScanTimestamp = this.getBiggestScanTimestampUTC();
 
+        // TODO: раскомментировать это, если закоментировано
         Duration duration = Duration.between(Utils.unixUTCToTimeUTC(biggestScanTimestamp), Utils.unixUTCToTimeUTC(messageTimestamp));
         if(duration.toMinutes() < 60){
             throw new Exception("Last scan was less 60 minutes ago.");

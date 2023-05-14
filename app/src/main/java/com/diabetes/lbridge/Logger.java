@@ -98,16 +98,16 @@ public class Logger {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw); // to PrintWriter
-        e.printStackTrace(); // to console
-        Logger.criticalError(sw.toString()); // to main activity logger window
+        // to console and logger windows
+        Logger.criticalError(sw.toString());
     }
 
     public static void error(Throwable e) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw); // to PrintWriter
-        e.printStackTrace(); // to console
-        Logger.error(sw.toString()); // to main activity logger window
+        // to console and logger windows
+        Logger.error(sw.toString());
     }
 
     private void writeToDatabase(LocalDateTime utc, String status, String message) {

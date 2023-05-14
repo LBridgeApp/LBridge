@@ -1,5 +1,6 @@
 package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
 
+import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
 import com.diabetes.lbridge.librelink.librelink_sas_db.rows.SensorRow;
@@ -20,22 +21,23 @@ public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
         this.rows = this.queryRows();
     }
 
-    protected void endSensor(String libreSN) throws Exception {
-        // Сенсор здесь нужно заканчивать только при старте нового сенсора.
+    protected SensorSelectionRangeRow getSensorRow(String libreSN) throws Exception {
+        SensorRow sensorRow = db.getSensorTable().getSensorRow(libreSN);
 
-        SensorTable sensorTable = db.getSensorTable();
-        SensorRow[] sensorRows = sensorTable.queryRows();
-        SensorRow sensorRow = Arrays.stream(sensorRows)
-                .filter(row -> row.getSerialNumber().equals(libreSN))
-                .findFirst()
-                .orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
-
-        SensorSelectionRangeRow rangeRow = Arrays.stream(rows)
+        return Arrays.stream(rows)
                 .filter(row -> row.getSensorId() == sensorRow.getSensorId())
                 .findFirst()
-                .orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found.", libreSN)));
+                .orElseThrow(() -> new Exception(String.format("Sensor with serial number %s not found in sensor selection table.", libreSN)));
+    }
 
+    protected void endSensor(String libreSN) throws Exception {
+        Logger.inf(String.format("Ending old sensor %s ...", libreSN));
+        // Сенсор здесь нужно заканчивать только при старте нового сенсора.
+
+        SensorSelectionRangeRow rangeRow = this.getSensorRow(libreSN);
         rangeRow.setEndTimestampUTC(System.currentTimeMillis()).replace();
+
+        Logger.inf(String.format("Old sensor %s ended.", libreSN));
     }
 
     protected void createNewSensorRecord(long sensorStartTimestampUTC) throws Exception {
@@ -50,6 +52,10 @@ public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
         int rangeId = getLastStoredRangeId() + 1;
 
         int sensorId = db.getSensorTable().getLastSensorId();
+
+        if(rangeId != sensorId){
+            throw new Exception("RangeId not equals sensorId");
+        }
 
         SensorSelectionRangeRow row = new SensorSelectionRangeRow(this,
                 endTimestampUTC, rangeId, sensorId, sensorStartTimestampUTC);
@@ -91,7 +97,7 @@ public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
     public long getBiggestTimestampUTC() {
         long biggestTimestamp = 0;
 
-        for(TimeRow row : rows){
+        for (TimeRow row : rows) {
             biggestTimestamp = Math.max(biggestTimestamp, row.getBiggestTimestampUTC());
         }
         return biggestTimestamp;
@@ -99,7 +105,7 @@ public class SensorSelectionRangeTable implements Table, TimeTable, CrcTable {
 
     @Override
     public void validateCRC() throws Exception {
-        for(CrcRow row : rows){
+        for (CrcRow row : rows) {
             row.validateCRC();
         }
     }
