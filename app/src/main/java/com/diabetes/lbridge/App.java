@@ -11,6 +11,8 @@ public class App extends Application implements LibreLinkActivityListener {
     private static App instance;
     private AppDatabase appDatabase;
     public static String TAG;
+    // TODO: если цель билда - релиз - проверить, что DEBUG_FLAG установлен на false
+    public static final boolean DEBUG_FLAG = false;
     public static App getInstance() {
         return instance;
     }

@@ -1,10 +1,10 @@
-package com.diabetes.lbridge.librelink.librelink_sas_db.tables;
+package com.diabetes.lbridge.librelink.sas_db.tables;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import com.diabetes.lbridge.librelink.librelink_sas_db.LibreLinkDatabase;
-import com.diabetes.lbridge.librelink.librelink_sas_db.rows.Row;
+import com.diabetes.lbridge.librelink.sas_db.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.sas_db.rows.Row;
 
 public interface Table {
     String getName();

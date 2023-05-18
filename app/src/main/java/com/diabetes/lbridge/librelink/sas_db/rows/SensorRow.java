@@ -1,11 +1,11 @@
-package com.diabetes.lbridge.librelink.librelink_sas_db.rows;
+package com.diabetes.lbridge.librelink.sas_db.rows;
 
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteClosable;
 import android.database.sqlite.SQLiteStatement;
 
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.SensorTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.SensorTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

@@ -1,4 +1,4 @@
-package com.diabetes.lbridge.librelink.librelink_sas_db;
+package com.diabetes.lbridge.librelink.sas_db;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
@@ -7,18 +7,17 @@ import com.diabetes.lbridge.App;
 import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.Utils;
 import com.diabetes.lbridge.librelink.LibreLink;
-import com.diabetes.lbridge.librelink.librelink_sas_db.rows.CrcRow;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.CrcTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.RawScanTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.RealTimeReadingTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.SensorTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.CrcTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.RawScanTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.RealTimeReadingTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.SensorTable;
 import com.diabetes.lbridge.libre.LibreMessage;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.HistoricReadingTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.ScanTimeTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.SensorSelectionRangeTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.Table;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.TimeTable;
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.UserTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.HistoricReadingTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.ScanTimeTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.SensorSelectionRangeTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.Table;
+import com.diabetes.lbridge.librelink.sas_db.tables.TimeTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.UserTable;
 
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
@@ -46,36 +45,61 @@ public class LibreLinkDatabase {
     public void patchWithLastScan() throws Exception {
         this.open();
 
-        LibreMessage libreMessage = this.getLibreMessage();
-        long messageTimestamp = libreMessage.getScanTimestampUTC();
-        long biggestTimestamp = this.getBiggestTimestampUTC();
-        String messagePersonTime = (Utils.unixUTCToTimeUTC(messageTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
-        String biggestPersonTime = (Utils.unixUTCToTimeUTC(biggestTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+        if(App.DEBUG_FLAG){
+            Logger.warn("Debug flag activated.");
+        }
 
-        // Если сообщение пришло с временем меньше, чем максимальное время в базе данных
-        if(messageTimestamp < biggestTimestamp){
+        LibreMessage libreMessage = this.getLibreMessage();
+
+        long messageTimestamp = libreMessage.getScanTimestampUTC();
+        long biggestDatabaseTimestamp = this.getBiggestTimestampUTC();
+
+        // На случай, если максимальное время в базе данных равно или больше времени последнего сканирования.
+        if(messageTimestamp <= biggestDatabaseTimestamp){
+            String messagePersonTime = (Utils.unixUTCToTimeUTC(messageTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+            String biggestDatabasePersonTime = (Utils.unixUTCToTimeUTC(biggestDatabaseTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+
             String errorMsg = String.format("Invalid libreMessage UTC timestamp.\n" +
-                    "LibreMessage timestamp: %s (UTC). Biggest time in db: %s (UTC)",
-                    messagePersonTime, biggestPersonTime);
+                    "LibreMessage timestamp: %s (UTC).\n" +
+                            "Biggest time in db: %s (UTC)",
+                    messagePersonTime, biggestDatabasePersonTime);
             throw new Exception(errorMsg);
         }
 
-        long biggestScanTimestamp = this.getBiggestScanTimestampUTC();
-
-        // TODO: раскомментировать это, если закоментировано
-        Duration duration = Duration.between(Utils.unixUTCToTimeUTC(biggestScanTimestamp), Utils.unixUTCToTimeUTC(messageTimestamp));
-        if(duration.toMinutes() < 60){
+        // Для релиза запрещено отправка следущего сканирования,
+        // если предыдущее было отправлено меньше 60 минут назад.
+        // Это число выбрано потому, что количество клеток в одном дне в журнале либрелинк равно 24.
+        // Если отправить сахар раньше 60 минут, то количество клеток будет уже 48, 72 и т. д.
+        // Если будет сбой и сканирования будут отправляться очень часто,
+        // журнал у врача будет выглядеть ужасно
+        long biggestDatabaseScanTimestamp = this.getBiggestScanTimestampUTC();
+        Duration timeSinceLastScan = Duration.between(Utils.unixUTCToTimeUTC(biggestDatabaseScanTimestamp), Utils.unixUTCToTimeUTC(messageTimestamp));
+        if(!App.DEBUG_FLAG && timeSinceLastScan.toMinutes() < 60){
             throw new Exception("Last scan was less 60 minutes ago.");
         }
 
+        // На случай, если время будет отличаться на двух телефонах.
+        Duration messageAndServerTimeDiff = Duration.between(Utils.unixUTCToTimeUTC(messageTimestamp), Utils.unixUTCToTimeUTC(System.currentTimeMillis()));
+        if(messageAndServerTimeDiff.toMinutes() > 5){
+            String messagePersonTime = (Utils.unixUTCToTimeUTC(messageTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+            String serverTimePersonTime = (Utils.unixUTCToTimeUTC(biggestDatabaseTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+
+            throw new Exception(String.format("Invalid libreMessage UTC timestamp.\n" +
+                    "LibreMessage timestamp: %s (UTC).\n" +
+                            "Server time: %s (UTC).",
+            messagePersonTime, serverTimePersonTime));
+        }
+
         execInTransaction(() -> {
-            sensorTable.updateToLastScan(librelink.getLibreMessage());
-            rawScanTable.addLastSensorScan(librelink.getLibreMessage());
-            realTimeReadingTable.addLastSensorScan(librelink.getLibreMessage());
-            historicReadingTable.addLastSensorScan(librelink.getLibreMessage());
+            sensorTable.updateToLastScan(libreMessage);
+            rawScanTable.addLastSensorScan(libreMessage);
+            realTimeReadingTable.addLastSensorScan(libreMessage);
+            historicReadingTable.addLastSensorScan(libreMessage);
         });
 
         db.close();
+
+        Logger.ok("Database patched with last scan");
     }
 
     private long getBiggestScanTimestampUTC(){

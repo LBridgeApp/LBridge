@@ -1,9 +1,9 @@
-package com.diabetes.lbridge.librelink.librelink_sas_db.rows;
+package com.diabetes.lbridge.librelink.sas_db.rows;
 
 import android.content.ContentValues;
 import android.database.Cursor;
 
-import com.diabetes.lbridge.librelink.librelink_sas_db.tables.RealTimeReadingTable;
+import com.diabetes.lbridge.librelink.sas_db.tables.RealTimeReadingTable;
 import com.diabetes.lbridge.libre.LibreMessage;
 import com.oop1.GlucoseUnit;
 
