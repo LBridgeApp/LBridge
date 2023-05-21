@@ -17,9 +17,9 @@ import java.util.List;
 
 public class WebService extends Service {
     private WebServer server;
-    private final List<BroadcastReceiver> receivers = new ArrayList<>();
     private static WebService instance = null;
     private AppDatabase appDatabase;
+    private LibreLink libreLink;
     private final int MIN_PORT = 1024;
     private final int MAX_PORT = 65535;
     @Override
@@ -37,10 +37,6 @@ public class WebService extends Service {
         } else {
             Logger.warn("web-service already running.");
         }
-    }
-
-    public void addBroadcastReceiver(BroadcastReceiver receiver){
-        this.receivers.add(receiver);
     }
 
     public static void stopService(){
@@ -66,7 +62,7 @@ public class WebService extends Service {
 
             server = new WebServer(this, null, serverPort);
             server.start();
-            LibreLink libreLink = new LibreLink(this);
+            libreLink = new LibreLink(this);
             libreLink.listenLibreMessages(server);
 
         } catch (Exception e) {
@@ -85,10 +81,13 @@ public class WebService extends Service {
         if (server != null) {
             server.stop();
         }
-        Logger.inf("web-service stopped.");
-        receivers.forEach(this::unregisterReceiver);
-        receivers.clear();
+
+        if(libreLink != null){
+            libreLink.close();
+        }
+
         WebService.instance = null;
+        Logger.inf("web-service stopped.");
         super.onDestroy();
     }
 

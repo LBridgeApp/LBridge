@@ -156,6 +156,14 @@ public class MainActivity extends AppCompatActivity implements LibreMessageListe
     }
 
     @Override
+    public void onDestroy() {
+        if (libreLink != null) {
+            libreLink.close();
+        }
+        super.onDestroy();
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
         getMenuInflater().inflate(R.menu.menu_main_activity, menu);

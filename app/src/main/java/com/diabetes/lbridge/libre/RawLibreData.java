@@ -33,7 +33,11 @@ public class RawLibreData {
         return timestamp;
     }
 
-    public RawLibreData(byte[] patchUID, byte[] patchInfo, byte[] payload, long timestampUTC) throws Exception {
+    public RawLibreData(
+            final byte[] patchUID,
+            final byte[] patchInfo,
+            final byte[] payload,
+            final long timestampUTC) {
         this.patchUID = patchUID;
         this.patchInfo = patchInfo;
         this.payload = payload;

@@ -17,12 +17,14 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class PeriodicTimer extends BroadcastReceiver {
+    private final Context context;
     private final LibreLink caller;
     private final AlarmManager alarmManager;
     private final PendingIntent pendingIntent;
     private boolean timerIsActive = false;
 
     public PeriodicTimer(LibreLink caller, WebService context) {
+        this.context = context;
         this.caller = caller;
         this.alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 
@@ -30,7 +32,6 @@ public class PeriodicTimer extends BroadcastReceiver {
         pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
         IntentFilter filter = new IntentFilter("com.diabetes.lbridge.librelink.timerReceiver");
         context.registerReceiver(this, filter);
-        context.addBroadcastReceiver(this);
     }
 
     protected void start() {
@@ -40,6 +41,8 @@ public class PeriodicTimer extends BroadcastReceiver {
     protected void stop() {
         timerIsActive = false;
         alarmManager.cancel(pendingIntent);
+        context.unregisterReceiver(this);
+        Logger.inf("Periodic timer stopped.");
     }
 
     private TaskStatus runTask(){

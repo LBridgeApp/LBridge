@@ -7,15 +7,42 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class RootLib {
     private Process rootedProcess;
+    private boolean isClosed;
 
     public RootLib(Context context) {
         // Context is not needed for that library.
         // But it is needed for starting from service or activity only.
+    }
+
+    public void close(){
+        if(rootedProcess != null && rootedProcess.isAlive()){
+            rootedProcess.destroy();
+        }
+        Logger.inf("Root process closed.");
+        isClosed = true;
+    }
+
+    public String readTextFile(final String filePath) throws Exception {
+        final String fileReadingCmd = String.format("cat %s", filePath);
+
+        CmdResult cmdResult = this.runCmd(fileReadingCmd);
+
+        String[] output = cmdResult.getCommandOutput();
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for(String str : output){
+            stringBuilder.append(str);
+        }
+
+        return stringBuilder.toString();
     }
 
     public void killApp(final String packageName) throws Exception {
@@ -140,6 +167,10 @@ public class RootLib {
     }
 
     private void onRootNeeded() throws Exception {
+        if(this.isClosed){
+            throw new Exception("RootLib closed.");
+        }
+
         if (rootedProcess == null || !rootedProcess.isAlive()) {
             boolean rootGranted = this.requestRoot();
             if (!rootGranted) {

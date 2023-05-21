@@ -1,6 +1,6 @@
-package com.diabetes.lbridge.librelink.sas_db.rows;
+package com.diabetes.lbridge.librelink.rows;
 
-import com.diabetes.lbridge.librelink.sas_db.tables.Table;
+import com.diabetes.lbridge.librelink.tables.Table;
 
 
 public interface Row {

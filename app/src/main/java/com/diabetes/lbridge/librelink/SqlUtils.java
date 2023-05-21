@@ -1,4 +1,4 @@
-package com.diabetes.lbridge.librelink.sas_db;
+package com.diabetes.lbridge.librelink;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;

@@ -1,4 +1,4 @@
-package com.diabetes.lbridge.librelink.sas_db.rows;
+package com.diabetes.lbridge.librelink.rows;
 
 public interface TimeRow {
     long getBiggestTimestampUTC();

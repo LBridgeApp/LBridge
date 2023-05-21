@@ -1,11 +1,11 @@
-package com.diabetes.lbridge.librelink.sas_db.tables;
+package com.diabetes.lbridge.librelink.tables;
 
 import com.diabetes.lbridge.libre.LibreMessage;
-import com.diabetes.lbridge.librelink.sas_db.LibreLinkDatabase;
-import com.diabetes.lbridge.librelink.sas_db.rows.CrcRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.RawScanRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.ScanTimeRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.TimeRow;
+import com.diabetes.lbridge.librelink.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.rows.CrcRow;
+import com.diabetes.lbridge.librelink.rows.RawScanRow;
+import com.diabetes.lbridge.librelink.rows.ScanTimeRow;
+import com.diabetes.lbridge.librelink.rows.TimeRow;
 
 import java.util.ArrayList;
 import java.util.List;

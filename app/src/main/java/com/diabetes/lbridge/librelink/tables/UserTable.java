@@ -1,8 +1,8 @@
-package com.diabetes.lbridge.librelink.sas_db.tables;
+package com.diabetes.lbridge.librelink.tables;
 
-import com.diabetes.lbridge.librelink.sas_db.LibreLinkDatabase;
-import com.diabetes.lbridge.librelink.sas_db.rows.CrcRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.UserRow;
+import com.diabetes.lbridge.librelink.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.rows.CrcRow;
+import com.diabetes.lbridge.librelink.rows.UserRow;
 
 import java.util.ArrayList;
 import java.util.List;

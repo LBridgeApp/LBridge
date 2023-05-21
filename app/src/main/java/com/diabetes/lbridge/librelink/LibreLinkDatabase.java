@@ -1,4 +1,4 @@
-package com.diabetes.lbridge.librelink.sas_db;
+package com.diabetes.lbridge.librelink;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
@@ -6,18 +6,17 @@ import android.database.sqlite.SQLiteDatabase;
 import com.diabetes.lbridge.App;
 import com.diabetes.lbridge.Logger;
 import com.diabetes.lbridge.Utils;
-import com.diabetes.lbridge.librelink.LibreLink;
-import com.diabetes.lbridge.librelink.sas_db.tables.CrcTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.RawScanTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.RealTimeReadingTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.SensorTable;
+import com.diabetes.lbridge.librelink.tables.CrcTable;
+import com.diabetes.lbridge.librelink.tables.RawScanTable;
+import com.diabetes.lbridge.librelink.tables.RealTimeReadingTable;
+import com.diabetes.lbridge.librelink.tables.SensorTable;
 import com.diabetes.lbridge.libre.LibreMessage;
-import com.diabetes.lbridge.librelink.sas_db.tables.HistoricReadingTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.ScanTimeTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.SensorSelectionRangeTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.Table;
-import com.diabetes.lbridge.librelink.sas_db.tables.TimeTable;
-import com.diabetes.lbridge.librelink.sas_db.tables.UserTable;
+import com.diabetes.lbridge.librelink.tables.HistoricReadingTable;
+import com.diabetes.lbridge.librelink.tables.ScanTimeTable;
+import com.diabetes.lbridge.librelink.tables.SensorSelectionRangeTable;
+import com.diabetes.lbridge.librelink.tables.Table;
+import com.diabetes.lbridge.librelink.tables.TimeTable;
+import com.diabetes.lbridge.librelink.tables.UserTable;
 
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
@@ -37,9 +36,9 @@ public class LibreLinkDatabase {
     private final Context context;
     private final LibreLink librelink;
 
-    public LibreLinkDatabase(Context context, LibreLink librelink) {
+    public LibreLinkDatabase(Context context, LibreLink caller) {
         this.context = context;
-        this.librelink = librelink;
+        this.librelink = caller;
     }
 
     public void patchWithLastScan() throws Exception {
@@ -97,7 +96,7 @@ public class LibreLinkDatabase {
             historicReadingTable.addLastSensorScan(libreMessage);
         });
 
-        db.close();
+        this.close();
 
         Logger.ok("Database patched with last scan");
     }
@@ -128,16 +127,21 @@ public class LibreLinkDatabase {
         }
     }
 
-    public void setFakeSerialNumberForLastSensor() throws Exception {
+    protected void setFakeSerialNumberForLastSensor() throws Exception {
         this.open();
         execInTransaction(() -> sensorTable.setFakeSerialNumberForLastSensor());
-        db.close();
+        this.close();
     }
 
-    public void endLastSensor() throws Exception {
+    protected void endLastSensor() throws Exception {
         this.open();
         execInTransaction(() -> sensorTable.endLastSensor());
+        this.close();
+    }
+
+    private void close(){
         db.close();
+        Logger.inf("Database closed.");
     }
 
     private void open() {
@@ -158,6 +162,8 @@ public class LibreLinkDatabase {
                 sensorTable,
                 userTable
         };
+
+        Logger.inf("Database opened.");
     }
     private void execInTransaction(ThrowingRunnable action) throws Exception {
         this.validateCRC();
@@ -179,7 +185,7 @@ public class LibreLinkDatabase {
         return db;
     }
 
-    public LibreMessage getLibreMessage(){
+    public LibreMessage getLibreMessage() {
         return librelink.getLibreMessage();
     }
 
@@ -207,7 +213,7 @@ public class LibreLinkDatabase {
         return userTable;
     }
 
-    public void createDatabasesInOurApp() throws Exception {
+    protected void createDatabasesInOurApp() throws Exception {
         // Этот метод создаёт две базы данных - sas.db и apollo.db за приложение LibreLink.
         // Это необходимо для работы нашего приложения в виртуальной машине Android,
         // если найдется способ заставить работать LibreLink в VM.

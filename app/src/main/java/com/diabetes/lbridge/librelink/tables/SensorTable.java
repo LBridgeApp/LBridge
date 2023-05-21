@@ -1,4 +1,4 @@
-package com.diabetes.lbridge.librelink.sas_db.tables;
+package com.diabetes.lbridge.librelink.tables;
 
 import android.database.Cursor;
 
@@ -9,11 +9,11 @@ import com.diabetes.lbridge.AppDatabase;
 import com.diabetes.lbridge.libre.LibreConfig;
 import com.diabetes.lbridge.libre.LibreMessage;
 import com.diabetes.lbridge.libre.PatchUID;
-import com.diabetes.lbridge.librelink.sas_db.LibreLinkDatabase;
-import com.diabetes.lbridge.librelink.sas_db.rows.CrcRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.ScanTimeRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.SensorRow;
-import com.diabetes.lbridge.librelink.sas_db.rows.TimeRow;
+import com.diabetes.lbridge.librelink.LibreLinkDatabase;
+import com.diabetes.lbridge.librelink.rows.CrcRow;
+import com.diabetes.lbridge.librelink.rows.ScanTimeRow;
+import com.diabetes.lbridge.librelink.rows.SensorRow;
+import com.diabetes.lbridge.librelink.rows.TimeRow;
 
 import java.time.Instant;
 import java.time.LocalDateTime;

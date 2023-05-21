@@ -1,9 +1,9 @@
-package com.diabetes.lbridge.librelink.sas_db.rows;
+package com.diabetes.lbridge.librelink.rows;
 
 import android.content.ContentValues;
 import android.database.Cursor;
 
-import com.diabetes.lbridge.librelink.sas_db.tables.RawScanTable;
+import com.diabetes.lbridge.librelink.tables.RawScanTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

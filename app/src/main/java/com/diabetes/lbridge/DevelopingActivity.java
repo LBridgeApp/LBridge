@@ -56,30 +56,28 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
         }
         else if(v.getId() == R.id.fake_serial_button){
             try {
-                setFakeSerialNumberForLastSensor();
+                this.setFakeSerialNumberForLastSensor();
             } catch (Exception e) {
                 Logger.error(e);
             }
         }
         else if(v.getId() == R.id.end_last_sensor_btn){
             try {
-                endLastSensor();
+                this.endLastSensor();
             } catch (Exception e) {
                 Logger.error(e);
             }
         }
         else if(v.getId() == R.id.removeLibrelinkDB){
             try {
-                LibreLink libreLink = new LibreLink(this);
-                libreLink.removeDatabasesInLibreLinkApp();
+                this.removeDatabasesInLibreLinkApp();
             } catch (Exception e) {
                 Logger.error(e);
             }
         }
         else if(v.getId() == R.id.createLibreLinkDB){
             try {
-                LibreLink libreLink = new LibreLink(this);
-                libreLink.createDatabasesInLibreLinkApp();
+                this.createLibreLinkDB();
             } catch (Exception e) {
                 Logger.error(e);
             }
@@ -93,14 +91,43 @@ public class DevelopingActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
+    private void createLibreLinkDB() throws Exception {
+        LibreLink libreLink = new LibreLink(this);
+        try{
+            libreLink.createDatabasesInLibreLinkApp();
+        }
+        finally {
+            libreLink.close();
+        }
+    }
+
+    private void removeDatabasesInLibreLinkApp() throws Exception {
+        LibreLink libreLink = new LibreLink(this);
+        try{
+            libreLink.createDatabasesInLibreLinkApp();
+        }
+        finally {
+            libreLink.close();
+        }
+    }
+
     private void setFakeSerialNumberForLastSensor() throws Exception {
         LibreLink libreLink = new LibreLink(this);
-        libreLink.setFakeSerialNumberForLastSensor();
+        try {
+            libreLink.setFakeSerialNumberForLastSensor();
+        } finally {
+            libreLink.close();
+        }
     }
 
     private void endLastSensor() throws Exception {
         LibreLink libreLink = new LibreLink(this);
-        libreLink.endLastSensor();
+        try{
+            libreLink.endLastSensor();
+        }
+        finally {
+            libreLink.close();
+        }
     }
 
     private void removeSensorAliases() throws Exception {

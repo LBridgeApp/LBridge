@@ -1,11 +1,11 @@
-package com.diabetes.lbridge.librelink.sas_db.rows;
+package com.diabetes.lbridge.librelink.rows;
 
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteClosable;
 import android.database.sqlite.SQLiteStatement;
 
-import com.diabetes.lbridge.librelink.sas_db.tables.SensorTable;
+import com.diabetes.lbridge.librelink.tables.SensorTable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -184,12 +184,12 @@ public class SensorRow implements Row, TimeRow, ScanTimeRow, CrcRow {
         this.attenuationState = attenuationState;
         SQLiteStatement statement = table.getDatabase().getSQLite()
                 .compileStatement(Row.getBaseUpdatingSQL(table, RowColumns.attenuationState, RowColumns.sensorId, sensorId));
-            if (attenuationState == null) {
-                statement.bindNull(1);
-            } else {
-                statement.bindBlob(1, attenuationState);
-            }
-            sqlChangingList.add(statement);
+        if (attenuationState == null) {
+            statement.bindNull(1);
+        } else {
+            statement.bindBlob(1, attenuationState);
+        }
+        sqlChangingList.add(statement);
         return this;
     }
 
@@ -298,19 +298,21 @@ public class SensorRow implements Row, TimeRow, ScanTimeRow, CrcRow {
     public SensorRow setEndedEarly(boolean endedEarly) {
         this.endedEarly = endedEarly;
         SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(Row.getBaseUpdatingSQL(
-                        table, RowColumns.endedEarly, RowColumns.sensorId, sensorId));
+                .compileStatement(
+                        Row.getBaseUpdatingSQL(
+                                table, RowColumns.endedEarly, RowColumns.sensorId, sensorId));
         statement.bindLong(1, (endedEarly) ? 1 : 0);
         this.sqlChangingList.add(statement);
         return this;
     }
 
-    public SensorRow setWearDurationInMinutes(int wearDurationInMinutes){
+    public SensorRow setWearDurationInMinutes(int wearDurationInMinutes) {
         this.wearDurationInMinutes = wearDurationInMinutes;
         SQLiteStatement statement = table.getDatabase().getSQLite()
-                .compileStatement(Row.getBaseUpdatingSQL(
-                        table, RowColumns.wearDurationInMinutes,
-                        RowColumns.sensorId, sensorId));
+                .compileStatement(
+                        Row.getBaseUpdatingSQL(
+                                table, RowColumns.wearDurationInMinutes,
+                                RowColumns.sensorId, sensorId));
         statement.bindLong(1, wearDurationInMinutes);
         this.sqlChangingList.add(statement);
         return this;
@@ -404,9 +406,10 @@ public class SensorRow implements Row, TimeRow, ScanTimeRow, CrcRow {
     public long getScanTimestampUTC() {
         return this.lastScanTimestampUTC;
     }
+
     @Override
     public void validateCRC() throws Exception {
-        if(this.CRC != this.computeCRC32()){
+        if (this.CRC != this.computeCRC32()) {
             throw new Exception("CRC is not valid.");
         }
     }

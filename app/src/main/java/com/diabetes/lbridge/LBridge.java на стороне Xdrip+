@@ -11,7 +11,8 @@ public static boolean HandleGoodReading(final String tagId, byte[] data1, final 
 }
 -------------------------------
 
-3) Создать файл в каталоге телефона /Xdrip+/LBridge.config, в котором записать ip и порт сервера LBridge.
+3) Создать файл в каталоге телефона /Xdrip+/LBridge.config,
+в котором записать ip и порт сервера LBridge в формате http://localhost:33982/.
 
 LBridege.java code:
 ----------------------------------------------------------------------------------------------------
@@ -59,7 +60,6 @@ public class LBridge implements Runnable {
     }
 
     String readServerUrlFile() throws Exception {
-        // считаем, что есть разрешение на чтение, в противном случае приложение упадет.
         File file = new File(Environment.getExternalStorageDirectory(), "Xdrip+/LBridge.config");
         FileInputStream inputStream = new FileInputStream(file);
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
