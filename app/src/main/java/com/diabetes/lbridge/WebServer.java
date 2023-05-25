@@ -50,10 +50,13 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
         List<LinkAddress> addresses;
         StringBuilder sb = new StringBuilder();
         if (activeNetwork != null) {
-            addresses = connectivityManager.getLinkProperties(activeNetwork).getLinkAddresses();
-            int counter = 0;
-            for (LinkAddress address : addresses) {
-                sb.append(String.format("#%s: %s\n", ++counter, address.getAddress().getHostAddress()));
+            LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
+            if(linkProperties != null){
+                addresses = connectivityManager.getLinkProperties(activeNetwork).getLinkAddresses();
+                int counter = 0;
+                for (LinkAddress address : addresses) {
+                    sb.append(String.format("#%s: %s\n", ++counter, address.getAddress().getHostAddress()));
+                }
             }
             return sb.toString();
         }
