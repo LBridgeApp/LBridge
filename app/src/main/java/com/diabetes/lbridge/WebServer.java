@@ -12,6 +12,7 @@ import com.diabetes.lbridge.libre.LibreMessage;
 import com.diabetes.lbridge.libre.RawLibreData;
 import com.google.gson.Gson;
 
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,24 +48,38 @@ class WebServer extends NanoHTTPD implements LibreMessageProvider {
 
     private String getIPs() {
         Network activeNetwork = connectivityManager.getActiveNetwork();
-        List<LinkAddress> addresses;
-        StringBuilder sb = new StringBuilder();
-        if (activeNetwork != null) {
-            LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
-            if(linkProperties != null){
-                addresses = connectivityManager.getLinkProperties(activeNetwork).getLinkAddresses();
-                int counter = 0;
-                for (LinkAddress address : addresses) {
-                    sb.append(String.format("#%s: %s\n", ++counter, address.getAddress().getHostAddress()));
-                }
-            }
-            return sb.toString();
+
+        if (activeNetwork == null) {
+            return "No active networks";
         }
-        return "Not available";
+
+        LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
+        if (linkProperties == null) {
+            return "No link properties";
+        }
+
+        List<LinkAddress> addresses = linkProperties.getLinkAddresses();
+        if (addresses == null) {
+            return "No link addresses";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int counter = 0;
+        for (LinkAddress address : addresses) {
+            InetAddress inetAddress = address.getAddress();
+            String hostAddress = inetAddress.getHostAddress();
+            sb.append(String.format("#%s: %s\n", ++counter, hostAddress));
+        }
+
+        if (sb.length() == 0) {
+            return "Not available";
+        }
+
+        return sb.toString();
     }
 
     @Override
-    public void stop(){
+    public void stop() {
         connectivityManager.unregisterNetworkCallback(networkCallback);
         Notification.HTTP_SERVER.cancel();
         super.stop();
