@@ -19,6 +19,7 @@ import com.diabetes.lbridge.librelink.tables.TimeTable;
 import com.diabetes.lbridge.librelink.tables.UserTable;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
@@ -50,13 +51,16 @@ public class LibreLinkDatabase {
 
         LibreMessage libreMessage = this.getLibreMessage();
 
+        long currentTimestamp = System.currentTimeMillis();
         long messageTimestamp = libreMessage.getScanTimestampUTC();
         long biggestDatabaseTimestamp = this.getBiggestTimestampUTC();
 
         // На случай, если максимальное время в базе данных равно или больше времени последнего сканирования.
         if(messageTimestamp <= biggestDatabaseTimestamp){
-            String messagePersonTime = (Utils.unixUTCToTimeUTC(messageTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
-            String biggestDatabasePersonTime = (Utils.unixUTCToTimeUTC(biggestDatabaseTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+            String messagePersonTime = Utils.unixUTCToTimeUTC(messageTimestamp)
+                    .format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+            String biggestDatabasePersonTime = Utils.unixUTCToTimeUTC(biggestDatabaseTimestamp)
+                    .format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
 
             String errorMsg = String.format("Invalid libreMessage UTC timestamp.\n" +
                     "LibreMessage timestamp: %s (UTC).\n" +
@@ -72,16 +76,22 @@ public class LibreLinkDatabase {
         // Если будет сбой и сканирования будут отправляться очень часто,
         // журнал у врача будет выглядеть ужасно
         long biggestDatabaseScanTimestamp = this.getBiggestScanTimestampUTC();
-        Duration timeSinceLastScan = Duration.between(Utils.unixUTCToTimeUTC(biggestDatabaseScanTimestamp), Utils.unixUTCToTimeUTC(messageTimestamp));
+        Duration timeSinceLastScan = Duration.between(
+                Utils.unixUTCToTimeUTC(biggestDatabaseScanTimestamp),
+                Utils.unixUTCToTimeUTC(messageTimestamp));
         if(!App.DEBUG_FLAG && timeSinceLastScan.toMinutes() < 60){
             throw new Exception("Last scan was less 60 minutes ago.");
         }
 
         // На случай, если время будет отличаться на двух телефонах.
-        Duration messageAndServerTimeDiff = Duration.between(Utils.unixUTCToTimeUTC(messageTimestamp), Utils.unixUTCToTimeUTC(System.currentTimeMillis()));
-        if(messageAndServerTimeDiff.toMinutes() > 5){
-            String messagePersonTime = (Utils.unixUTCToTimeUTC(messageTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
-            String serverTimePersonTime = (Utils.unixUTCToTimeUTC(biggestDatabaseTimestamp)).format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+        Duration messageAndServerTimeDiff = Duration.between(
+                Utils.unixUTCToTimeUTC(messageTimestamp),
+                Utils.unixUTCToTimeUTC(currentTimestamp));
+        if(messageAndServerTimeDiff.toMinutes() >= 5 || currentTimestamp < messageTimestamp){
+            String messagePersonTime = Utils.unixUTCToTimeUTC(messageTimestamp)
+                    .format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
+            String serverTimePersonTime = Utils.unixUTCToTimeUTC(currentTimestamp)
+                    .format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm"));
 
             throw new Exception(String.format("Invalid libreMessage UTC timestamp.\n" +
                     "LibreMessage timestamp: %s (UTC).\n" +
