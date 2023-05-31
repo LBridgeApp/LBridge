@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/open_logs"
+        android:orderInCategory="1"
+        android:title="@string/logs" />
+    <item
+        android:id="@+id/startService"
+        android:orderInCategory="2"
+        android:title="@string/start_web_service" />
+    <item
+        android:id="@+id/stopService"
+        android:orderInCategory="3"
+        android:title="@string/stop_web_service" />
+    <item
+        android:id="@+id/set_draw_overlay_permission"
+        android:orderInCategory="4"
+        android:title="@string/set_draw_overlay_permission" />
+    <item
+        android:id="@+id/goto_developing_options"
+        android:orderInCategory="5"
+        android:title="@string/for_developers" />
+    <item
+        android:id="@+id/exit"
+        android:orderInCategory="6"
+        android:title="@string/exit"/>
+</menu>
